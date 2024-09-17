@@ -1,17 +1,20 @@
-import datetime
 from elevenlabs import Voice, VoiceSettings, play, save
 from elevenlabs.client import ElevenLabs
 import pygame
 import time
-from openai import OpenAI
 import os
+from os.path import join, dirname
 from dotenv import load_dotenv
 import speech_recognition as sr
 
-load_dotenv()
+
+dotenv_path = join(dirname(__file__), '.env')
+load_dotenv(dotenv_path)
+
+#tavily_client = TavilyClient(api_key=os.getenv('TAVILY_API_KEY'))
 
 client = ElevenLabs(
-    api_key=os.getenv('ELEVENLABS_API_KEY')
+    api_key=os.environ.get('ELEVENLABS_API_KEY')
 )
 
 def play_audio(file_path):

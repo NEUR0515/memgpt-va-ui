@@ -232,11 +232,11 @@ function App() {
   return (
     <Flex direction="column" height="100vh" bg="gray.900" color="white">
       {/* Header */}
-      <HStack justify="space-between" p={4} bg="gray.800">
+      <HStack justify="center" p={4} bg="gray.800">
         <Box fontWeight="bold" fontSize="xl">
           J.A.R.V.I.S
         </Box>
-        <HStack spacing={4}>
+        {/* <HStack spacing={4}> */}
           {/* <IconButton icon={<AttachmentIcon />} aria-label="Toggle File Preview" size="lg" onClick={toggleLeftPanel} /> */}
           {/* <IconButton icon={<SettingsIcon />} aria-label="Toggle Console Output" size="lg" onClick={toggleRightPanel} /> */}
           {/* <IconButton aria-label="Microphone" size="lg" onClick={toggleListening}>
@@ -244,13 +244,13 @@ function App() {
               <FiMic />
             </Box>
           </IconButton> */}
-          <HStack>
+          {/* <HStack>
             <IconButton icon={<ChatIcon />} aria-label="Microphone" size="lg" />
             <CircularProgress value={audioLevel} size="50px" thickness="8px" color="blue.500">
               <CircularProgressLabel>{audioLevel}%</CircularProgressLabel>
             </CircularProgress>
-          </HStack>
-        </HStack>
+          </HStack> */}
+        {/* </HStack> */}
       </HStack>
 
       {/* Main Content */}
@@ -301,7 +301,7 @@ function App() {
             borderRadius="full"
             boxShadow="md"
           >
-            <IconButton
+            {/* <IconButton
               icon={<AttachmentIcon />}
               aria-label="Attach File"
               variant="unstyled"
@@ -310,7 +310,7 @@ function App() {
               color="white"
               _hover={{ bg: 'gray.500' }}
               onClick={toggleLeftPanel}
-            />
+            /> */}
             {/* Use Textarea instead of Input to support multiline */}
             <Textarea
               variant="unstyled"
@@ -349,11 +349,18 @@ function App() {
                 setEditorContent(''); // Clear editor after sending
               }}
             />
-            <IconButton aria-label="Microphone" size="lg" onClick={toggleListening}>
-              <Box color={isListening ? "red.500" : "white"}>
-                <FiMic />
-              </Box>
-            </IconButton>
+            <CircularProgress value={audioLevel} size="60px" thickness="4px" color="blue.500">
+              <CircularProgressLabel>
+                <IconButton
+                  aria-label="Microphone"
+                  size="lg"
+                  isRound
+                  icon={<FiMic />}
+                  onClick={toggleListening}  // This toggles the isListening state
+                  color={isListening ? "red.500" : "white"}
+                />
+              </CircularProgressLabel>
+            </CircularProgress>
           </HStack>
 
         </VStack>
