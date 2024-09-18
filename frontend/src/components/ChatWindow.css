@@ -1,0 +1,50 @@
+/* Chat message styling */
+.chat-message {
+    display: flex;
+    padding: 10px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    max-width: 40%;  /* Make the messages smaller */
+  }
+
+/* User messages align right */
+.chat-message.user {
+  justify-content: flex-end;
+  background-color: #4a90e2;
+  margin-left: auto;
+}
+
+/* AI messages align left */
+.chat-message.ai {
+  justify-content: flex-start;
+  background-color: #2c2f33;
+  margin-right: auto;
+}
+
+/* Text alignment for the message content */
+.chat-message p {
+  color: white;
+  text-align: left;
+}
+
+.chat-message.user p {
+  text-align: right;
+}
+
+/* Thought messages styling */
+.chat-message.thought-message {
+  background-color: rgba(245, 212, 66, 0.1);  /* Yellow background */
+  font-style: italic;  /* Italicized */
+  border-left: 4px solid #f5d442;  /* Yellow bar to the left */
+  padding-left: 10px;
+}
+
+.thought-icon {
+  color: #f5d442;  /* Yellow icon color */
+  font-size: 1.2em;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+}
