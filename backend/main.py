@@ -50,7 +50,7 @@ with open('alfie.txt', 'r') as file:
     human = file.read()
 
 agent_state = client.create_agent(
-    name="JarvisBot", memory=ChatMemory(human=human, persona=persona),
+    name="JarvisAI2", memory=ChatMemory(human=human, persona=persona),
     tools=[sms_tool.name, search_tool.name, schedule_tool.name, create_repo_tool.name]
 )
 

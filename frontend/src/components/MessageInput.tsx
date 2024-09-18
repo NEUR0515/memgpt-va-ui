@@ -13,6 +13,14 @@ interface MessageInputProps {
 const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, audioLevel, isListening, toggleListening }) => {
   const [editorContent, setEditorContent] = useState('');
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault(); // Prevent the default behavior of creating a new line
+      onSendMessage(editorContent); // Send the message
+      setEditorContent(''); // Clear the input
+    }
+  };
+
   return (
     <HStack width="100%" spacing={4} justify="center">
       {/* Textarea in the center */}
@@ -22,6 +30,7 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, audioLevel, 
           value={editorContent}
           onChange={(e) => setEditorContent(e.target.value)}
           placeholder="Type your message here..."
+          onKeyDown={handleKeyDown} // Handle key presses
         />
       </Box>
 
