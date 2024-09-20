@@ -1,4 +1,4 @@
-from memgpt import create_client, load_agent
+from memgpt import create_client
 
 # Initialize the client
 client = create_client()

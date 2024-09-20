@@ -89,9 +89,6 @@ function App() {
       setMessages((prevMessages) => [...prevMessages, aiMessage]);
       scrollToBottom();
 
-      // **Speech synthesis to speak the AI's response aloud**
-      // const utterance = new SpeechSynthesisUtterance(data.message);
-      // window.speechSynthesis.speak(utterance);
     }
   };
 

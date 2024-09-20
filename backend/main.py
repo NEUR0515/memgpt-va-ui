@@ -3,7 +3,7 @@ import os
 from os.path import join, dirname
 import ast
 import re
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from memgpt import create_client
@@ -122,7 +122,7 @@ async def websocket_endpoint(websocket: WebSocket):
                                             if 'message' in arguments_dict:
                                                 spoken_message = arguments_dict["message"]
                                                 print(f"Message from function call: {spoken_message}")
-                                                break  # Ensure only one function call message is handled
+                                                #break  # Ensure only one function call message is handled
                                         except (SyntaxError, ValueError) as e:
                                             print(f"Error parsing function call arguments: {e}")
                                     else:
@@ -167,6 +167,20 @@ async def broadcast_message(message: str):
             await connection.send_json({"message": message})  # Proper JSON format
         except Exception as e:
             print(f"Error sending message to WebSocket: {e}")
+
+
+# Add file upload API route using FastAPI
+@app.post("/upload")
+async def upload_file(file: UploadFile):
+    content = await file.read()
+    print(f"Received file: {file.filename}")
+    # Process the file content here if needed
+    try:
+        with open(file.filename, "wb") as f:
+            agent_state.archival_memory_insert(file.filename, content)
+    except Exception as e:
+        print(f"Error processing file {file.filename}:  {e}")
+    return {"message": f"Processed file: {file.filename}"}
 
 
 if __name__ == '__main__':

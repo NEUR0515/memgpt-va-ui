@@ -4,7 +4,7 @@ from memgpt.agent import Agent
 class ReadFileParams(TypedDict):
     file_path: str
 
-def read_file_tool(self: Agent, file_path: str) -> str:
+def read_file(self: Agent, file_path: str) -> str:
     """
     Reads the content of the specified file.
 
@@ -29,7 +29,7 @@ class WriteFileParams(TypedDict):
     file_path: str
     content: str
 
-def write_file_tool(self: Agent, file_path: str, content: str) -> str:
+def write_file(self: Agent, file_path: str, content: str) -> str:
     """
     Writes the given content to the specified file path.
 

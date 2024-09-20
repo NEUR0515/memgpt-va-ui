@@ -5,6 +5,8 @@ from os.path import join, dirname
 from dotenv import load_dotenv
 import speech_recognition as sr
 from google.cloud import texttospeech
+from memgpt.memory import ChatMemory, MemoryModule
+from typing import Optional, List
 
 # Instantiates a client
 tts_client = texttospeech.TextToSpeechClient()
