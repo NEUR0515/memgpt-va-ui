@@ -1,3 +1,4 @@
+import base64
 import json
 import os
 from os.path import join, dirname
@@ -44,14 +45,30 @@ def get_existing_agent(agent_name):
             return agent
     return None
 
+# Function to get an existing source
+def get_existing_source(data_source_name):
+    data_sources = client.list_sources()
+    for data_source in data_sources:
+        print(f"Source {data_source.id} is named {data_source.name}")
+        if data_source.name == data_source_name:
+            return data_source
+    return None
+
 # Connect to an existing agent by name (or manually specify its ID)
 agent_name = "Jarvis"  # Set this to the name of your manually created agent
 agent_state = get_existing_agent(agent_name)
+data_source_name = "Jarvis-Data"   # Set this to the name of your manually created source
+source_state = get_existing_source(data_source_name)
 
 if not agent_state:
     print(f"No agent with the name '{agent_name}' was found. Please create it manually.")
     exit(1)
 
+if not source_state:
+    print(f"No source with the name '{data_source_name}' was found. It will now be created.")
+    client.create_source(name=data_source_name)
+    
+client.attach_source_to_agent(source_state.id, agent_id=agent_state.id)
 # Store active WebSocket connections
 active_connections = set()
 
@@ -169,18 +186,20 @@ async def broadcast_message(message: str):
             print(f"Error sending message to WebSocket: {e}")
 
 
+
 # Add file upload API route using FastAPI
 @app.post("/upload")
 async def upload_file(file: UploadFile):
     content = await file.read()
+    #print(content)
     print(f"Received file: {file.filename}")
     # Process the file content here if needed
     try:
-        with open(file.filename, "wb") as f:
-            agent_state.archival_memory_insert(file.filename, content)
+        # Add file data into an archival memory 
+        client.insert_archival_memory(agent_state.id, content)
     except Exception as e:
         print(f"Error processing file {file.filename}:  {e}")
-    return {"message": f"Processed file: {file.filename}"}
+    return {"message": f"Added file: {file.filename} to data source"}
 
 
 if __name__ == '__main__':
