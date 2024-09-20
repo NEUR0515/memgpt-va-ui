@@ -13,6 +13,7 @@ from functions.send_sms import send_text_message
 from functions.gsearch import google_search
 from functions.google_calendar import schedule_event
 from functions.git_repo import create_git_repo
+from functions.file_functions import read_file_tool, write_file_tool
 import uvicorn
 from dotenv import load_dotenv
 
@@ -39,20 +40,22 @@ app.mount("/img", StaticFiles(directory="../frontend/public/img"), name="img")
 # Initialize the client and create tools
 client = create_client()
 
-sms_tool = client.create_tool(send_text_message, name="send_text_message")
-search_tool = client.create_tool(google_search, name="google_search")
-schedule_tool = client.create_tool(schedule_event, name="schedule_event")
-create_repo_tool = client.create_tool(create_git_repo, name="create_git_repo")
+# Function to get an existing agent
+def get_existing_agent(agent_name):
+    agents = client.list_agents()
+    for agent in agents:
+        print(f"Agent {agent.id} is named {agent.name}")
+        if agent.name == agent_name:
+            return agent
+    return None
 
-# Persona and agent creation
-persona = "You are Jarvis from the Iron Man series"
-with open('alfie.txt', 'r') as file:
-    human = file.read()
+# Connect to an existing agent by name (or manually specify its ID)
+agent_name = "Jarvis"  # Set this to the name of your manually created agent
+agent_state = get_existing_agent(agent_name)
 
-agent_state = client.create_agent(
-    name="JarvisAI2", memory=ChatMemory(human=human, persona=persona),
-    tools=[sms_tool.name, search_tool.name, schedule_tool.name, create_repo_tool.name]
-)
+if not agent_state:
+    print(f"No agent with the name '{agent_name}' was found. Please create it manually.")
+    exit(1)
 
 # Store active WebSocket connections
 active_connections = set()
@@ -121,7 +124,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
                         if spoken_message:
                             await broadcast_message(spoken_message)
-                            say(spoken_message)
+                            #say(spoken_message)
                             #print(f"Broadcasted message: {spoken_message}")
 
             except Exception as e:
@@ -157,8 +160,8 @@ async def broadcast_message(message: str):
 
 
 if __name__ == '__main__':
-    try:
-        uvicorn.run(app, host="0.0.0.0", port=8000)
-    finally:
-        client.delete_agent(agent_id=agent_state.id)
-        print(f"Deleted agent: {agent_state.name}")
+    #try:
+    uvicorn.run("main:app", host="0.0.0.0", port=8000)
+    # finally:
+    #     client.delete_agent(agent_id=agent_state.id)
+    #     print(f"Deleted agent: {agent_state.name}")

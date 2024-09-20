@@ -39,7 +39,7 @@ function App() {
   const [ws, setWs] = useState<WebSocket | null>(null);
 
   useEffect(() => {
-    const webSocket = new WebSocket('ws://localhost:8000/ws');
+    const webSocket = new WebSocket('ws://172.16.3.80:8000/ws');
     setWs(webSocket);
 
     webSocket.onopen = () => {
@@ -66,8 +66,8 @@ function App() {
     };
   }, []);
 
+  // Function to handle incoming WebSocket messages and trigger speech synthesis
   const handleIncomingMessage = (data: any) => {
-    // Thought message handling
     if (data.type === 'thought') {
       const thoughtMessage: Message = {
         role: 'ai',
@@ -88,6 +88,10 @@ function App() {
       };
       setMessages((prevMessages) => [...prevMessages, aiMessage]);
       scrollToBottom();
+
+      // **Speech synthesis to speak the AI's response aloud**
+      const utterance = new SpeechSynthesisUtterance(data.message);
+      window.speechSynthesis.speak(utterance);
     }
   };
 
@@ -183,29 +187,44 @@ function App() {
   return (
     <Flex direction="column" height="100vh">
       <Header />
-
-      <Flex flex="1" overflow="hidden">
-        {isLeftPanelOpen && <FileUploader onFileUpload={handleFileUpload} />}
-        <ChatWindow messages={messages} messagesEndRef={messagesEndRef} />
+      <Flex
+        flex="1"
+        overflow="hidden"
+        direction={{ base: 'column', md: 'row' }}  // Mobile view: Column, Desktop: Row
+      >
+        {isLeftPanelOpen && (
+          <Box
+            width={{ base: '100%', md: '20%' }}  // Full width on mobile
+            bg="gray.700"
+            p={4}
+            overflowY="auto"
+          >
+            <FileUploader onFileUpload={handleFileUpload} />
+          </Box>
+        )}
+        <Box flex="1" bg="gray.800" p={4}>
+          <ChatWindow messages={messages} messagesEndRef={messagesEndRef} />
+        </Box>
         {isRightPanelOpen && (
-          <Box width="20%" bg="gray.700" p={4} overflowY="auto">
-            <TerminalOutput terminalLogs={terminalLogs} />
+          <Box
+            width={{ base: '100%', md: '20%' }}  // Full width on mobile
+            bg="gray.700"
+            p={4}
+            overflowY="auto"
+          >
+            <TerminalOutput terminalLogs={[]} />
           </Box>
         )}
       </Flex>
-
       <LiveTranscription transcription={transcription} />
-
-      <Flex justify="center" p={4} width="100%">
-        <Box width="50%">
-          <MessageInput
-            onSendMessage={handleSendMessage}
-            audioLevel={audioLevel}
-            isListening={isListening}
-            toggleListening={toggleListening}
-          />
-        </Box>
-      </Flex>
+      <MessageInput
+        onSendMessage={handleSendMessage}
+        toggleLeftPanel={toggleLeftPanel}
+        toggleRightPanel={toggleRightPanel}
+        audioLevel={audioLevel}
+        isListening={isListening}
+        toggleListening={toggleListening}
+      />
     </Flex>
   );
 }

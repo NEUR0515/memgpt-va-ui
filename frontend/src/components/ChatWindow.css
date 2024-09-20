@@ -1,11 +1,11 @@
 /* Chat message styling */
 .chat-message {
-    display: flex;
-    padding: 10px;
-    border-radius: 10px;
-    margin-bottom: 10px;
-    max-width: 40%;  /* Make the messages smaller */
-  }
+  display: flex;
+  padding: 10px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  max-width: 40%;
+}
 
 /* User messages align right */
 .chat-message.user {
@@ -33,18 +33,25 @@
 
 /* Thought messages styling */
 .chat-message.thought-message {
-  background-color: rgba(245, 212, 66, 0.1);  /* Yellow background */
-  font-style: italic;  /* Italicized */
-  border-left: 4px solid #f5d442;  /* Yellow bar to the left */
+  background-color: rgba(245, 212, 66, 0.1); /* Yellow background */
+  font-style: italic; /* Italicized */
+  border-left: 4px solid #f5d442; /* Yellow bar to the left */
   padding-left: 10px;
 }
 
 .thought-icon {
-  color: #f5d442;  /* Yellow icon color */
+  color: #f5d442; /* Yellow icon color */
   font-size: 1.2em;
 }
 
 .avatar {
   width: 40px;
   height: 40px;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 600px) {
+  .chat-message {
+      max-width: 80%;
+  }
 }
