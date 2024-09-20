@@ -22,10 +22,10 @@ search_tool = client.create_tool(google_search, name="google_search")
 schedule_tool = client.create_tool(schedule_event, name="schedule_event")
 create_repo_tool = client.create_tool(create_git_repo, name="create_git_repo")
 
-with open('jarvis.txt', 'r') as file:
+with open('persona.txt', 'r') as file:
     persona = file.read()
 
-with open('alfie.txt', 'r') as file:
+with open('human.txt', 'r') as file:
     human = file.read()
 
 agent_state = client.create_agent(

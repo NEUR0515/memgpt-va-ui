@@ -1,22 +1,18 @@
-from elevenlabs import Voice, VoiceSettings, play, save
-from elevenlabs.client import ElevenLabs
 import pygame
 import time
-import os
+import tempfile
 from os.path import join, dirname
 from dotenv import load_dotenv
 import speech_recognition as sr
+from google.cloud import texttospeech
 
+# Instantiates a client
+tts_client = texttospeech.TextToSpeechClient()
 
 dotenv_path = join(dirname(__file__), '.env')
 load_dotenv(dotenv_path)
 
-#tavily_client = TavilyClient(api_key=os.getenv('TAVILY_API_KEY'))
-
-client = ElevenLabs(
-    api_key=os.environ.get('ELEVENLABS_API_KEY')
-)
-
+# Initialize pygame mixer for audio playback
 def play_audio(file_path):
     pygame.mixer.init()
     pygame.mixer.music.load(file_path)
@@ -25,52 +21,52 @@ def play_audio(file_path):
     while pygame.mixer.music.get_busy():
         time.sleep(1)
         
-def say(message, filename="output.mp3", index=None):
-    voice = Voice(
-        voice_id="cmiele1eY3uGFqJdZTKJ",
-        settings=VoiceSettings(
-            stability=0.66,
-            similarity_boost=1,
-            use_sayer_boost=True
-        )
-    )
-    
-    audio = client.generate(
-        text=message,
-        voice=voice,
-        model="eleven_multilingual_v2"
-    )
-
+# Function to convert text to speech using Google TTS and play it
+def say(message: str):
     try:
-        # Stop any current playback and fully uninitialize pygame to release the file
+        # Validate that the message is a non-empty string
+        if not isinstance(message, str) or not message.strip():
+            raise ValueError("Invalid or empty message passed to the TTS function")
+
+        # Create a temporary file for storing the audio
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=True) as temp_file:
+            temp_filename = temp_file.name
+        
+        # Create a synthesis request for Google TTS
+        synthesis_input = texttospeech.SynthesisInput(text=message)
+
+        # Select the voice and audio encoding
+        voice = texttospeech.VoiceSelectionParams(
+            language_code="en-GB", ssml_gender=texttospeech.SsmlVoiceGender.MALE
+        )
+
+        # Set the audio configuration (MP3 format)
+        audio_config = texttospeech.AudioConfig(
+            audio_encoding=texttospeech.AudioEncoding.MP3
+        )
+
+        # Synthesize the speech and get the response
+        response = tts_client.synthesize_speech(
+            input=synthesis_input, voice=voice, audio_config=audio_config
+        )
+
+        # Save the synthesized audio to a temporary file
+        with open(temp_filename, "wb") as f:
+            f.write(response.audio_content)
+
+        # Stop and quit pygame mixer if it was already playing
         if pygame.mixer.get_init() and pygame.mixer.music.get_busy():
             pygame.mixer.music.stop()
-        pygame.mixer.quit()  # Fully quit pygame mixer
+        pygame.mixer.quit()
 
-        # Ensure pygame fully releases the resources
-        time.sleep(1)  # Small delay to ensure pygame quits completely
+        # Play the audio using pygame
+        play_audio(temp_filename)
 
-        # Retry mechanism to ensure the file is not in use before removing it
-        retry_count = 0
-        while os.path.exists(filename):
-            try:
-                os.remove(filename)  # Try removing the file
-                break  # Exit loop if successful
-            except PermissionError:
-                retry_count += 1
-                if retry_count > 5:  # Stop retrying after 5 attempts
-                    raise Exception("File is still in use after multiple retries.")
-                time.sleep(1)  # Wait for 1 second before retrying
-
-        # Save the new audio file
-        save(audio, filename)
-
-        # Play the audio
-        play_audio(filename)
-
+    except ValueError as ve:
+        print(f"Validation error: {ve}")
     except Exception as e:
         print(f"Error in say() function: {e}")
-    
+
 # Function to listen for voice input
 def listen():
     r = sr.Recognizer()
@@ -95,12 +91,9 @@ def listen():
 def listen_for_wake_word():
     while True:
         query = listen()
-        # Ensure only one wake word triggers the assistant.
-        if query: # Check if a valid query was returned
+        if query:  # Check if a valid query was returned
             if "jarvis" in query:
-                say("Yes, Alfie? How can I help you?")
-                #assistant()
-                #break  # Exit the wake word loop to avoid multiple triggers.
+                say("Yes? How can I help you?")
                 return query  # Return the valid query if 'Jarvis' is detected
             elif "exit" in query or "stop" in query:
                 say("Okay, goodbye.")

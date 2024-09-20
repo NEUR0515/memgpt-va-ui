@@ -1,12 +1,9 @@
 pymemgpt
-pyttsx3
 SpeechRecognition
 python-dotenv
 openai
-elevenlabs
 pygame
 PyAudio
-tavily-python
 google-api-python-client
 google-auth-httplib2
 google-auth-oauthlib

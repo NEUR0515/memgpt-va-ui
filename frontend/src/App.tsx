@@ -90,8 +90,8 @@ function App() {
       scrollToBottom();
 
       // **Speech synthesis to speak the AI's response aloud**
-      const utterance = new SpeechSynthesisUtterance(data.message);
-      window.speechSynthesis.speak(utterance);
+      // const utterance = new SpeechSynthesisUtterance(data.message);
+      // window.speechSynthesis.speak(utterance);
     }
   };
 
@@ -100,7 +100,7 @@ function App() {
       role: 'user',
       content: message,
       timestamp: new Date().toLocaleTimeString(),
-      name: 'Alfie',
+      name: 'User',
     };
 
     if (ws && ws.readyState === WebSocket.OPEN) {
@@ -118,7 +118,7 @@ function App() {
   const handleFileUpload = async (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
-    const response = await fetch('http://localhost:8000/upload', {
+    const response = await fetch('http://172.16.3.80:8000/upload', {
       method: 'POST',
       body: formData,
     });

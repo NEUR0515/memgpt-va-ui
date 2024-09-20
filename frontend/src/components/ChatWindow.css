@@ -53,5 +53,13 @@
 @media (max-width: 600px) {
   .chat-message {
       max-width: 80%;
+      overflow-y: auto; /* Enable scroll if messages are too long */
   }
+}
+.chat-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-height: 100vh; /* Adjust this depending on layout */
+  overflow-y: auto;  /* This enables scrolling */
 }

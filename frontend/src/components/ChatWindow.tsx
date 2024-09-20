@@ -17,7 +17,7 @@ const getAvatarSrc = (role: string) => {
 
 const ChatWindow: React.FC<ChatWindowProps> = ({ messages, messagesEndRef }) => {
   return (
-    <VStack flex="1" bg="gray.800" p={4} spacing={4} justify="flex-end" align="center">
+    <VStack flex="1" bg="gray.800" p={4} spacing={4} justify="flex-end" align="center" maxHeight={{ base: '60vh', md: '80vh' }} overflowY="auto">
       <Box flex="1" width="60%" bg="gray.800" p={4} borderRadius="md" overflowY="auto">
         {messages.map((message, index) => (
           <HStack

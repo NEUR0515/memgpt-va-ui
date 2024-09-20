@@ -2,8 +2,8 @@
 .venv
 __pycache__
 client_secret*.json
+google_credentials.json
 openapi_assistants.json
 openai_memgpt.json
 output.mp3
-alfie.txt
-.aider*
+human.txt

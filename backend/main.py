@@ -9,11 +9,6 @@ from fastapi.staticfiles import StaticFiles
 from memgpt import create_client
 from memgpt.memory import ChatMemory
 from utils import say
-from functions.send_sms import send_text_message
-from functions.gsearch import google_search
-from functions.google_calendar import schedule_event
-from functions.git_repo import create_git_repo
-from functions.file_functions import read_file_tool, write_file_tool
 import uvicorn
 from dotenv import load_dotenv
 
@@ -107,24 +102,39 @@ async def websocket_endpoint(websocket: WebSocket):
                         spoken_message = None
 
                         # Check assistant message first
+                        spoken_message = None  # Initialize spoken_message as None
+
                         if response.messages:
                             for r in response.messages:
                                 if "assistant_message" in r:
                                     spoken_message = r.get("assistant_message")
+                                    print(f"Assistant message found: {spoken_message}")
                                     break  # Ensure only one assistant message is handled
 
                                 elif "function_call" in r:
+                                    print(f"Function call found: {r['function_call']}")
                                     match = re.search(r"send_message\((.*)\)", r["function_call"])
                                     if match:
-                                        arguments = match.group(1)
-                                        arguments_dict = ast.literal_eval(arguments)
-                                        if 'message' in arguments_dict:
-                                            spoken_message = arguments_dict["message"]
-                                            break  # Ensure only one function call message is handled
+                                        try:
+                                            arguments = match.group(1)
+                                            arguments_dict = ast.literal_eval(arguments)  # Safely evaluate the arguments
+                                            print(f"Extracted arguments: {arguments_dict}")
+                                            if 'message' in arguments_dict:
+                                                spoken_message = arguments_dict["message"]
+                                                print(f"Message from function call: {spoken_message}")
+                                                break  # Ensure only one function call message is handled
+                                        except (SyntaxError, ValueError) as e:
+                                            print(f"Error parsing function call arguments: {e}")
+                                    else:
+                                        print("No match found for 'send_message' function call")
+
+                        # After loop, check if spoken_message is still None or empty
+                        if not spoken_message:
+                            print("No valid assistant message or function call message found.")
 
                         if spoken_message:
                             await broadcast_message(spoken_message)
-                            #say(spoken_message)
+                            say(spoken_message)
                             #print(f"Broadcasted message: {spoken_message}")
 
             except Exception as e:

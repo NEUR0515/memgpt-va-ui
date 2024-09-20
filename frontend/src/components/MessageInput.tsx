@@ -93,12 +93,12 @@ const MessageInput: React.FC<MessageInputProps> = ({
         </CircularProgress>
 
         {/* Right Sidebar Toggle Button */}
-        <IconButton
+        {/* <IconButton
           icon={<SettingsIcon />}
           aria-label="Toggle Console Output"
           size="lg"
           onClick={toggleRightPanel} // Call the prop function to toggle the right panel
-        />
+        /> */}
       </Flex>
     </Flex>
   );
