@@ -4,7 +4,7 @@ This is J.A.R.V.I.S, a personal AI assistant designed to handle various tasks in
 
 ## Features
 
-- Realitic Text-To-Speech using Elevenlabs.
+- Realitic and customisable Text-To-Speech using Elevenlabs.
 - WebSocket-based communication between frontend and backend.
 - Support for AI-assisted conversations with dynamic responses.
 - Thought messages visually distinct from other messages.
@@ -65,6 +65,12 @@ cp app/backend/.env-example app/backend/.env
 ```bash
 cd app/frontend
 npm run build
+```
+
+### Create the agent
+```bash
+cd app/backend
+python create_agent.py
 ```
 
 ### Start the app:
