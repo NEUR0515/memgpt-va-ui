@@ -1,6 +1,6 @@
-# J.A.R.V.I.S Application
+# MemGPT Voice Assistant UI
 
-This is J.A.R.V.I.S, a personal AI assistant designed to handle various tasks including speech-to-text, conversation management, and more. The application is built using a FastAPI backend, with a React frontend and integrated with Deepgram for voice functionalities. The frontend is hosted statically within the backend, and the app can be accessed directly through a browser.
+This is J.A.R.V.I.S, a personal AI assistant designed to handle various tasks including sending SMS messages, creating files and folders, conversation and task management, and more. The application is built using a FastAPI backend, with a React frontend and integrated with Elevenlabs for voice functionalities. The frontend is hosted statically within the backend, and the app can be accessed directly through a browser.
 
 ## Features
 
@@ -8,17 +8,21 @@ This is J.A.R.V.I.S, a personal AI assistant designed to handle various tasks in
 - WebSocket-based communication between frontend and backend.
 - Support for AI-assisted conversations with dynamic responses.
 - Thought messages visually distinct from other messages.
-- Responsive UI for mobile and desktop usage.
-- Markdown support for messages, including bullet points and formatting.
-- SMS messaging integration.
+- Responsive UI for mobile and desktop usage (WIP).
+- Markdown support for messages, including bullet points and formatting (WIP).
+- SMS messaging integration using Twilio.
 - Google Search Capabilities.
+- Create and initialise Git repositories.
+- Ability to use OpenAI/Groq/Custom LLMs and swap custom tools in and out as needed.
+- File data can be uploaded straight into Archival Memory using the UI.
+- MemGPT Data Source connections to chat with your data.
 
 ## Technologies Used
 
-- **Backend**: FastAPI, MemGPT, ElevenLabs
+- **Backend**: FastAPI, MemGPT, ElevenLabs, Twilio, Git
 - **Frontend**: React (hosted statically within FastAPI)
 - **WebSocket**: For real-time communication between frontend and backend
-- **Voice Interaction**: Deepgram for voice-to-text and text-to-speech synthesis
+- **Voice Interaction**: Elevenlabs for text-to-speech synthesis
 
 ## Installation
 
@@ -31,7 +35,7 @@ This is J.A.R.V.I.S, a personal AI assistant designed to handle various tasks in
 ### Clone the Repository
 
 ```bash
-git clone https://github.com/your-repo/jarvis-app.git
+git clone https://gitlab.com/N3UR0515/memgpt-va-ui.git
 cd memgpt-va-ui
 ```
 
