@@ -38,8 +38,8 @@ cd memgpt-va-ui
 ### Create missing human.txt file
 
 ```bash
-touch human.txt
-echo "My name is Alfie" > human.txt
+touch ./app/backend/human.txt
+echo "My name is Alfie" > ./app/backend/human.txt
 ```
 
 ### Setup the Backend
