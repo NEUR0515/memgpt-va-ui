@@ -96,3 +96,8 @@ The app uses Elevenlabs for TTS
 
 For any issues or suggestions, feel free to open an issue in the repository or contact me via email.
 
+#### DISCLAIMER
+
+I am not a professional Python or React developer and this is just a personal project.
+
+There will be bugs, be warned!
