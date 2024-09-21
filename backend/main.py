@@ -9,6 +9,8 @@ from memgpt import create_client
 from utils import say
 import uvicorn
 from dotenv import load_dotenv
+import io
+from PyPDF2 import PdfReader
 
 dotenv_path = join(dirname(__file__), '.env')
 load_dotenv(dotenv_path)
@@ -184,15 +186,46 @@ async def broadcast_message(message: str):
 # Add file upload API route using FastAPI
 @app.post("/upload")
 async def upload_file(file: UploadFile):
-    content = await file.read()
-    print(f"Received file: {file.filename}")
-    # Process the file content here if needed
     try:
-        # Add file data into an archival memory 
-        client.insert_archival_memory(agent_state.id, content)
+        content = await file.read()
+        filename = file.filename
+        print(f"Received file: {filename}")
+
+        # Try to decode as UTF-8, fall back to handling as binary if it fails
+        try:
+            content_str = content.decode("utf-8")  # Decode the bytes to a string
+            print(f"File {filename} decoded as UTF-8")
+            # Process the text content (e.g., insert into memory)
+            client.insert_archival_memory(agent_state.id, content_str)
+        except UnicodeDecodeError:
+            print(f"File {filename} could not be decoded as UTF-8, handling as binary.")
+            
+            # Handle binary files (PDFs)
+            if filename.endswith(".pdf"):
+                try:
+                    pdf_file = io.BytesIO(content)  # Convert bytes to a file-like object
+                    reader = PdfReader(pdf_file)
+                    extracted_text = ""
+                    
+                    # Extract text from all the pages
+                    for page in reader.pages:
+                        extracted_text += page.extract_text()
+
+                    # Insert extracted text into memory
+                    client.insert_archival_memory(agent_state.id, extracted_text)
+                    print(f"Extracted text from {filename} and added to archival memory.")
+                except Exception as e:
+                    print(f"Error processing PDF {filename}: {e}")
+                    return {"message": f"Error processing PDF {filename}: {e}"}
+            else:
+                print(f"Binary file {filename} is not a supported type.")
+                return {"message": f"Binary file {filename} is not a supported type."}
+
     except Exception as e:
-        print(f"Error processing file {file.filename}:  {e}")
-    return {"message": f"Added file: {file.filename} to data source"}
+        print(f"Error processing file {file.filename}: {e}")
+        return {"message": f"Error processing file {file.filename}: {e}"}
+
+    return {"message": f"Successfully processed {filename}"}
 
 if __name__ == '__main__':
     #try:
