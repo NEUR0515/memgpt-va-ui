@@ -1,6 +1,4 @@
-import base64
 import json
-import os
 from os.path import join, dirname
 import ast
 import re
@@ -8,7 +6,6 @@ from fastapi import FastAPI, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from memgpt import create_client
-from memgpt.memory import ChatMemory
 from utils import say
 import uvicorn
 from dotenv import load_dotenv
@@ -167,7 +164,6 @@ async def websocket_endpoint(websocket: WebSocket):
         print("WebSocket connection closed.")
         await broadcast_log("WebSocket connection closed")
 
-
 # Function to broadcast log messages to all active WebSocket connections
 async def broadcast_log(log: str):
     for connection in active_connections:
@@ -185,13 +181,10 @@ async def broadcast_message(message: str):
         except Exception as e:
             print(f"Error sending message to WebSocket: {e}")
 
-
-
 # Add file upload API route using FastAPI
 @app.post("/upload")
 async def upload_file(file: UploadFile):
     content = await file.read()
-    #print(content)
     print(f"Received file: {file.filename}")
     # Process the file content here if needed
     try:
@@ -200,7 +193,6 @@ async def upload_file(file: UploadFile):
     except Exception as e:
         print(f"Error processing file {file.filename}:  {e}")
     return {"message": f"Added file: {file.filename} to data source"}
-
 
 if __name__ == '__main__':
     #try:

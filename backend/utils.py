@@ -1,15 +1,20 @@
 import pygame
+import os
 import time
 import tempfile
 from os.path import join, dirname
 from dotenv import load_dotenv
 import speech_recognition as sr
-from google.cloud import texttospeech
 from memgpt.memory import ChatMemory, MemoryModule
 from typing import Optional, List
+from elevenlabs import Voice, VoiceSettings, play, save
+from elevenlabs.client import ElevenLabs
 
-# Instantiates a client
-tts_client = texttospeech.TextToSpeechClient()
+
+client = ElevenLabs(
+    api_key=os.environ.get('ELEVENLABS_API_KEY')
+)
+
 
 dotenv_path = join(dirname(__file__), '.env')
 load_dotenv(dotenv_path)
@@ -22,52 +27,53 @@ def play_audio(file_path):
     # Wait until the audio is done playing
     while pygame.mixer.music.get_busy():
         time.sleep(1)
-        
-# Function to convert text to speech using Google TTS and play it
-def say(message: str):
+
+def say(message, filename="output.mp3", index=None):
+    voice = Voice(
+        voice_id="cmiele1eY3uGFqJdZTKJ",
+        settings=VoiceSettings(
+            stability=0.66,
+            similarity_boost=1,
+            use_sayer_boost=True
+        )
+    )
+    
+    audio = client.generate(
+        text=message,
+        voice=voice,
+        model="eleven_multilingual_v2"
+    )
+
     try:
-        # Validate that the message is a non-empty string
-        if not isinstance(message, str) or not message.strip():
-            raise ValueError("Invalid or empty message passed to the TTS function")
-
-        # Create a temporary file for storing the audio
-        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=True) as temp_file:
-            temp_filename = temp_file.name
-        
-        # Create a synthesis request for Google TTS
-        synthesis_input = texttospeech.SynthesisInput(text=message)
-
-        # Select the voice and audio encoding
-        voice = texttospeech.VoiceSelectionParams(
-            language_code="en-GB", ssml_gender=texttospeech.SsmlVoiceGender.MALE
-        )
-
-        # Set the audio configuration (MP3 format)
-        audio_config = texttospeech.AudioConfig(
-            audio_encoding=texttospeech.AudioEncoding.MP3
-        )
-
-        # Synthesize the speech and get the response
-        response = tts_client.synthesize_speech(
-            input=synthesis_input, voice=voice, audio_config=audio_config
-        )
-
-        # Save the synthesized audio to a temporary file
-        with open(temp_filename, "wb") as f:
-            f.write(response.audio_content)
-
-        # Stop and quit pygame mixer if it was already playing
+        # Stop any current playback and fully uninitialize pygame to release the file
         if pygame.mixer.get_init() and pygame.mixer.music.get_busy():
             pygame.mixer.music.stop()
-        pygame.mixer.quit()
+        pygame.mixer.quit()  # Fully quit pygame mixer
 
-        # Play the audio using pygame
-        play_audio(temp_filename)
+        # Ensure pygame fully releases the resources
+        time.sleep(1)  # Small delay to ensure pygame quits completely
 
-    except ValueError as ve:
-        print(f"Validation error: {ve}")
+        # Retry mechanism to ensure the file is not in use before removing it
+        retry_count = 0
+        while os.path.exists(filename):
+            try:
+                os.remove(filename)  # Try removing the file
+                break  # Exit loop if successful
+            except PermissionError:
+                retry_count += 1
+                if retry_count > 5:  # Stop retrying after 5 attempts
+                    raise Exception("File is still in use after multiple retries.")
+                time.sleep(1)  # Wait for 1 second before retrying
+
+        # Save the new audio file
+        save(audio, filename)
+
+        # Play the audio
+        play_audio(filename)
+
     except Exception as e:
         print(f"Error in say() function: {e}")
+
 
 # Function to listen for voice input
 def listen():
