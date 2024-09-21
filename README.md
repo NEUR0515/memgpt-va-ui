@@ -79,7 +79,7 @@ http://your-ip-address:8000/frontend
 
 After running the server, the application is available at the /frontend endpoint.
 You can interact with J.A.R.V.I.S via text or voice.
-The app uses Deepgram for TTS
+The app uses Elevenlabs for TTS
 
 #### Contact
 
