@@ -1,6 +1,7 @@
 import React from 'react';
 import { Box, VStack, Text, HStack, Avatar } from '@chakra-ui/react';
 import { Message } from '../types';
+import ReactMarkdown from 'react-markdown';
 import './ChatWindow.css';  // Import the CSS file
 
 interface ChatWindowProps {
@@ -44,8 +45,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ messages, messagesEndRef }) => 
               )}
 
               {/* Regular message */}
+              {/* Render markdown content */}
               {message.type !== 'thought' && (
-                <Text color="white">{message.content}</Text>
+                <Box color="white">
+                  <ReactMarkdown>{message.content}</ReactMarkdown>
+                </Box>
               )}
             </VStack>
           </HStack>
