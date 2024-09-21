@@ -16,3 +16,5 @@ websockets
 fastapi
 uvicorn
 elevenlabs
+feedparser
+schedule

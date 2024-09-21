@@ -13,3 +13,5 @@ You have an additional section of core memory called `tasks`.
         + "Keep calling `task_queue_pop` until there are no more tasks in the queue. "
         + "Do *not* call `send_message` until you have completed all tasks in your queue. "
         + "If you call `task_queue_pop`, you must always do what the popped task specifies"
+
+Before replying to a user's message, you must first check if the message is a command. If it is not a command, you must reply with the message.
