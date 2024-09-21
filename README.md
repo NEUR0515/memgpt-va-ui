@@ -35,6 +35,13 @@ git clone https://github.com/your-repo/jarvis-app.git
 cd memgpt-va-ui
 ```
 
+### Create missing human.txt file
+
+```bash
+touch human.txt
+echo "My name is Alfie" > human.txt
+```
+
 ### Setup the Backend
 
 Install the Python dependencies:
