@@ -1,8 +1,8 @@
 import json
-from os.path import join, dirname
+from os.path import join, dirname, exists
 import ast
 import re
-from fastapi import FastAPI, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, UploadFile, WebSocket, WebSocketDisconnect, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from memgpt import create_client, memory
@@ -260,16 +260,48 @@ def fetch_google_calendar_events():
     
     return events
 
+# Function to initialize the tasks.json file
+def initialize_tasks_file():
+    # Check if tasks.json exists and is not empty
+    if not exists('tasks.json'):
+        # If the file doesn't exist, create it with an empty list
+        with open('tasks.json', 'w') as f:
+            json.dump([], f)  # Initialize with an empty list
+            print("Initialized tasks.json with an empty list.")
+
+# Load tasks from tasks.json or initialize an empty list if file doesn't exist
+if os.path.exists('tasks.json'):
+    with open('tasks.json', 'r') as f:
+        tasks = json.load(f)
+else:
+    tasks = []
+
 @app.get("/api/calendar-events")
 def get_calendar_events():
     events = fetch_google_calendar_events()
     return events
 
-# Create an API route to fetch tasks
-# @app.get("/api/tasks")
-# def get_tasks():
-#     tasks = agent_state.memory["tasks"].value  # Access tasks from agent's memory
-#     return {"tasks": tasks}
+# Endpoint to get tasks from tasks.json
+@app.get("/api/tasks")
+def get_tasks():
+    if not exists('./tasks.json'):
+        return {"tasks": []}  # Return empty list if file doesn't exist
+
+    with open('./tasks.json', 'r') as f:
+        tasks = json.load(f)
+    
+    # Debugging output
+    print(f"Tasks loaded from JSON: {tasks}")
+    return {"tasks": tasks}
+
+@app.post("/api/tasks/add")
+async def add_task(task: dict = Body(...)):
+    task_description = task.get("task")
+    
+    # Push task to agent memory and save it
+    agent_state.memory.task_queue_push(task_description)
+    
+    return {"tasks": agent_state.memory["tasks"].value}
 
 if __name__ == '__main__':
     #try:

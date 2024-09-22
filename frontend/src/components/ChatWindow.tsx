@@ -18,34 +18,44 @@ const getAvatarSrc = (role: string) => {
 
 const ChatWindow: React.FC<ChatWindowProps> = ({ messages, messagesEndRef }) => {
   return (
-    <VStack flex="1" bg="gray.800" p={4} spacing={4} justify="flex-end" align="center" maxHeight={{ base: '60vh', md: '80vh' }} overflowY="auto">
-      <Box flex="1" width="60%" bg="gray.800" p={4} borderRadius="md" overflowY="auto">
+    <VStack
+      flex="1"
+      bg="gray.800"
+      p={4}
+      spacing={4}
+      justify="flex-end"
+      align="center"  // Ensure the content is centered
+      maxHeight={{ base: '60vh', md: '80vh' }}
+      overflowY="auto"
+    >
+      <Box width="80%" overflowY="auto">  {/* Center the messages container and set it to 80% width */}
         {messages.map((message, index) => (
           <HStack
             key={index}
-            className={`chat-message ${message.role} ${message.type === 'thought' ? 'thought-message' : ''}`}  // Apply CSS class for thought
+            className={`chat-message ${message.role} ${message.type === 'thought' ? 'thought-message' : ''}`}
+            alignSelf={message.role === 'user' ? 'flex-end' : 'flex-start'}
+            maxWidth="fit-content"
           >
             {/* Avatar */}
             <Avatar name={message.name} src={getAvatarSrc(message.role)} className="avatar" />
 
             {/* Message content */}
-            <VStack align="flex-start" spacing={1}>
+            <VStack align="flex-start" spacing={1} maxWidth="fit-content">
               <HStack spacing={3}>
                 {/* Name and timestamp */}
                 <Text fontWeight="bold" color="white">{message.name}</Text>
                 <Text fontSize="xs" color="gray.400">{message.timestamp}</Text>
               </HStack>
-              
+
               {/* Thought message icon */}
               {message.type === 'thought' && (
                 <HStack spacing={1}>
-                  <Box as="span" className="thought-icon">💡</Box> {/* Example thought icon */}
+                  <Box as="span" className="thought-icon">💡</Box>
                   <Text fontStyle="italic" color="gray.300">{message.content}</Text>
                 </HStack>
               )}
 
               {/* Regular message */}
-              {/* Render markdown content */}
               {message.type !== 'thought' && (
                 <Box color="white">
                   <ReactMarkdown>{message.content}</ReactMarkdown>

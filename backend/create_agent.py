@@ -1,8 +1,10 @@
-from os.path import join, dirname
+from os.path import join, dirname, exists
 import os
+import json
 from typing import Optional, List
 from memgpt import create_client
 from memgpt.memory import ChatMemory, MemoryModule
+from memgpt.agent import Agent
 from functions.send_sms import send_text_message
 from functions.gsearch import google_search
 from functions.schedule_event import schedule_event
@@ -52,7 +54,6 @@ class TaskMemory(ChatMemory):
         self.memory["tasks"].value = self.memory["tasks"].value[1:]
         return task
 
-
 write_file_tool = client.create_tool(write_file, name="write_file")
 read_file_tool = client.create_tool(read_file, name="read_file")
 sms_tool = client.create_tool(send_text_message, name="send_text_message")
@@ -69,10 +70,13 @@ with open('persona.txt', 'r') as file:
 with open('human.txt', 'r') as file:
     human = file.read()
 
+# Initialize the agent with loaded tasks
+agent_memory = TaskMemory(human=human, persona=persona, tasks=[])
 agent_state = client.create_agent(
-    name="Jarvis", memory=TaskMemory(human=human, persona=persona,
-    tasks=[]),
-    tools=[sms_tool.name, search_tool.name, schedule_event_tool.name, list_upcoming_events_tool.name, create_repo_tool.name, read_file_tool.name, write_file_tool.name, security_news_tool.name, send_security_newsletter_tool.name]
+    name="Jarvis", memory=agent_memory,
+    tools=[sms_tool.name, search_tool.name, schedule_event_tool.name, list_upcoming_events_tool.name, 
+           create_repo_tool.name, read_file_tool.name, write_file_tool.name, 
+           security_news_tool.name, send_security_newsletter_tool.name]
 )
 
 print(f"Created agent: {agent_state.name} with ID {str(agent_state.id)}")

@@ -1,10 +1,14 @@
 /* Chat message styling */
 .chat-message {
   display: flex;
+  align-items: center;
   padding: 10px;
   border-radius: 10px;
   margin-bottom: 10px;
-  max-width: 45%;
+  max-width: 60%; /* Prevents message from expanding too wide */
+  width: fit-content; /* Only takes the space it needs */
+  word-wrap: break-word;
+  overflow-wrap: break-word; /* Ensure long words break properly */
 }
 
 /* User messages align right */
@@ -19,9 +23,26 @@
   justify-content: flex-start;
   background-color: #2c2f33;
   margin-right: auto;
+  max-width: 60%; /* Prevents message from expanding too wide */
 }
 
-/* Text alignment for the message content */
+/* Thought messages styling */
+.chat-message.thought-message {
+  background-color: rgba(245, 212, 66, 0.1);
+  font-style: italic;
+  border-left: 4px solid #f5d442;
+  padding-left: 10px;
+}
+
+/* Avatar styling */
+.avatar {
+  width: 40px;
+  height: 40px;
+  margin-right: 10px;
+  border-radius: 50%;
+}
+
+/* Message text content */
 .chat-message p {
   color: white;
   text-align: left;
@@ -31,35 +52,23 @@
   text-align: right;
 }
 
-/* Thought messages styling */
-.chat-message.thought-message {
-  background-color: rgba(245, 212, 66, 0.1); /* Yellow background */
-  font-style: italic; /* Italicized */
-  border-left: 4px solid #f5d442; /* Yellow bar to the left */
-  padding-left: 10px;
-}
-
-.thought-icon {
-  color: #f5d442; /* Yellow icon color */
-  font-size: 1.2em;
-}
-
-.avatar {
-  width: 40px;
-  height: 40px;
-}
-
-/* Mobile Responsiveness */
+/* Mobile responsiveness */
 @media (max-width: 800px) {
   .chat-message {
-      max-width: 100%;
-      overflow-y: auto; /* Enable scroll if messages are too long */
+    max-width: 100%;
+    width: fit-content;
   }
 }
+
 .chat-container {
   display: flex;
   flex-direction: column;
   height: 100%;
-  max-height: 100vh; /* Adjust this depending on layout */
-  overflow-y: auto;  /* This enables scrolling */
+  overflow-y: auto;
+}
+
+/* Main container styling */
+.chat-container > div {
+  width: 80%;  /* Limit the container width to 80% */
+  margin: 0 auto; /* Center it horizontally */
 }
