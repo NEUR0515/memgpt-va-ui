@@ -2,7 +2,11 @@
 
 This is J.A.R.V.I.S, a personal AI assistant designed to handle various tasks including sending SMS messages, creating files and folders, conversation and task management, and more. The application is built using a FastAPI backend, with a React frontend and integrated with Elevenlabs for voice functionalities. The frontend is hosted statically within the backend, and the app can be accessed directly through a browser.
 
-![App Screenshot](./assets/Screenshot1.png)
+<div style="display: flex; flex-wrap: wrap;">
+  <img src="./assets/Screenshot1.png" alt="Image 1" style="width: 30%; margin-right: 10px;"/>
+  <img src="./assets/Screenshot2.png" alt="Image 2" style="width: 30%; margin-right: 10px;"/>
+  <img src="./assets/Screenshot3.png" alt="Image 3" style="width: 30%;"/>
+</div>
 
 ## Features
 
