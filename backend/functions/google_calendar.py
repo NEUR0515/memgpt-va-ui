@@ -1,97 +1,110 @@
-# Enabling API control on Google Calendar requires a few steps:
-# https://developers.google.com/calendar/api/quickstart/python
-# including:
-#   pip install --upgrade google-api-python-client google-auth-httplib2 google-auth-oauthlib
-
-import os
-import os.path
-import traceback
-from typing import Optional
-
+from memgpt.agent import Agent
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
+import os
 
-# If modifying these scopes, delete the file token.json.
-# SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
-SCOPES = ["https://www.googleapis.com/auth/calendar"]
+# Define paths for token and credentials
 TOKEN_PATH = os.path.expanduser("~/.memgpt/gcal_token.json")
 CREDENTIALS_PATH = os.path.expanduser("~/.memgpt/google_api_credentials.json")
+SCOPES = ["https://www.googleapis.com/auth/calendar"]
 
-
-def schedule_event(
-    self,
-    title: str,
-    start: str,
-    end: str,
-    # attendees: Optional[List[str]] = None,
-    # attendees: Optional[list[str]] = None,
-    description: Optional[str] = None,
-    # timezone: Optional[str] = "Europe/London,
-) -> str:
-    """
-    Schedule an event on the user's Google Calendar. Start and end time must be in ISO 8601 format, e.g. February 1st 2024 at noon PT would be "2024-02-01T12:00:00-07:00".
-
-    Args:
-        title (str): Event name
-        start (str): Start time in ISO 8601 format (date, time, and timezone offset)
-        end (str): End time in ISO 8601 format (date, time, and timezone offset)
-        description (Optional[str]): Expanded description of the event
-
-    Returns:
-        str: The status of the event scheduling request.
-    """
-
+# This function is used to get the Google Calendar API service
+def get_calendar_service():
     creds = None
-    # The file token.json stores the user's access and refresh tokens, and is
-    # created automatically when the authorization flow completes for the first
-    # time.
+    # Load credentials from file if available
     if os.path.exists(TOKEN_PATH):
         creds = Credentials.from_authorized_user_file(TOKEN_PATH, SCOPES)
-    # If there are no (valid) credentials available, let the user log in.
+    
+    # If credentials are not valid, refresh or get new ones
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
             flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_PATH, SCOPES)
             creds = flow.run_local_server(port=0)
-        # Save the credentials for the next run
-        with open(TOKEN_PATH, "w") as token:
-            token.write(creds.to_json())
+        # Save the new credentials for future use
+        with open(TOKEN_PATH, 'w') as token_file:
+            token_file.write(creds.to_json())
 
-    #### Create an event
-    # Refer to the Python quickstart on how to setup the environment:
-    # https://developers.google.com/calendar/quickstart/python
-    # Change the scope to 'https://www.googleapis.com/auth/calendar' and delete any
-    # stored credentials.
+    # Build the calendar service using credentials
+    service = build("calendar", "v3", credentials=creds)
+    return service
+
+# Tool for scheduling an event
+def schedule_event(self: Agent, title: str, start: str, end: str, description: str = None) -> str:
+    """
+    Schedule an event on the user's Google Calendar.
+    
+    Args:
+        self (Agent): The MemGPT agent object.
+        title (str): Event title.
+        start (str): Start time in ISO 8601 format (e.g., "2024-02-01T12:00:00-07:00").
+        end (str): End time in ISO 8601 format (e.g., "2024-02-01T14:00:00-07:00").
+        description (str): Optional description for the event.
+    
+    Returns:
+        str: Confirmation message with event link or an error message.
+    """
     try:
-        service = build("calendar", "v3", credentials=creds)
+        # Get the calendar service
+        service = get_calendar_service()
+        if not service:
+            return "Failed to connect to Google Calendar service."
 
+        # Create the event details
         event = {
-            "summary": title,
-            # "location": "800 Howard St., San Francisco, CA 94103",
-            "start": {
-                "dateTime": start,
-                "timeZone": "Europe/London",
+            'summary': title,
+            'description': description,
+            'start': {
+                'dateTime': start,
+                'timeZone': 'Europe/London',
             },
-            "end": {
-                "dateTime": end,
-                "timeZone": "Europe/London",
+            'end': {
+                'dateTime': end,
+                'timeZone': 'Europe/London',
             },
         }
 
-        # if attendees is not None:
-        # event["attendees"] = attendees
+        # Insert the event into the calendar
+        event_result = service.events().insert(calendarId='primary', body=event).execute()
+        return f"Event created: {event_result.get('htmlLink')}"
 
-        if description is not None:
-            event["description"] = description
+    except Exception as e:
+        return f"An error occurred: {str(e)}"
 
-        event = service.events().insert(calendarId="primary", body=event).execute()
-        return "Event created: %s" % (event.get("htmlLink"))
+# Tool for listing upcoming events
+def list_upcoming_events(self: Agent, max_results: int = 10) -> str:
+    """
+    List upcoming events from the user's Google Calendar.
+    
+    Args:
+        self (Agent): The MemGPT agent object.
+        max_results (int): Maximum number of events to retrieve.
+    
+    Returns:
+        str: A list of upcoming events or an error message.
+    """
+    try:
+        # Get the calendar service
+        service = get_calendar_service()
+        if not service:
+            return "Failed to connect to Google Calendar service."
 
-    except HttpError as error:
-        traceback.print_exc()
+        # Retrieve the events from the calendar
+        events_result = service.events().list(
+            calendarId='primary', maxResults=max_results,
+            singleEvents=True, orderBy='startTime'
+        ).execute()
 
-        return f"An error occurred while trying to create an event: {str(error)}"
+        # Extract and format the events
+        events = events_result.get('items', [])
+        if not events:
+            return "No upcoming events found."
+
+        event_list = [f"{event['start'].get('dateTime', event['start'].get('date'))}: {event['summary']}" for event in events]
+        return "\n".join(event_list)
+
+    except Exception as e:
+        return f"An error occurred: {str(e)}"

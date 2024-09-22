@@ -19,3 +19,4 @@ elevenlabs
 feedparser
 schedule
 PyPDF2
+homeassistant_api

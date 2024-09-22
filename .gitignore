@@ -1,8 +1,7 @@
 */.env
 .venv
 __pycache__
-client_secret*.json
-google_credentials.json
+google_api_credentials.json
 openapi_assistants.json
 openai_memgpt.json
 output.mp3

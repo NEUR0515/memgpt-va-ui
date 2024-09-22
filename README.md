@@ -12,12 +12,13 @@ This is J.A.R.V.I.S, a personal AI assistant designed to handle various tasks in
 - Thought messages visually distinct from other messages.
 - Responsive UI for mobile and desktop usage (WIP).
 - Markdown support for messages, including bullet points and formatting (WIP).
-- SMS messaging integration using Twilio.
+- SMS messaging integration using Twilio (Currently send only) (WIP).
 - Google Search Capabilities.
 - Create and initialise Git repositories.
 - Ability to use OpenAI/Groq/Custom LLMs and swap custom tools in and out as needed.
 - File data can be uploaded straight into Archival Memory using the UI.
 - MemGPT Data Source connections to chat with your data.
+- List upcoming events and create new ones in Google Calendar.
 
 ## Technologies Used
 
@@ -100,6 +101,10 @@ http://your-ip-address:8000/frontend
 After running the server, the application is available at the /frontend endpoint.
 You can interact with J.A.R.V.I.S via text or voice.
 The app uses Elevenlabs for TTS
+
+### Setting up Google Services
+
+To use Google Services you need to set up a Google Cloud Platform account and follow the instructions here: [MemGPT Assistant Example](https://github.com/cpacker/MemGPT/blob/main/examples/personal_assistant_demo/README.md)
 
 ### Contact
 

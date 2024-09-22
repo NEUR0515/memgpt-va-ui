@@ -1,14 +1,17 @@
 from os.path import join, dirname
+import os
 from typing import Optional, List
 from memgpt import create_client
 from memgpt.memory import ChatMemory, MemoryModule
 from functions.send_sms import send_text_message
 from functions.gsearch import google_search
-from functions.google_calendar import schedule_event
+from functions.schedule_event import schedule_event
+from functions.list_upcoming_events import list_upcoming_events
 from functions.git_repo import create_git_repo
 from functions.file_functions import read_file, write_file
 from functions.threat_newsletter import fetch_security_news, send_security_newsletter
 from dotenv import load_dotenv
+from googleapiclient.discovery import Resource
 
 dotenv_path = join(dirname(__file__), '.env')
 load_dotenv(dotenv_path)
@@ -54,7 +57,8 @@ write_file_tool = client.create_tool(write_file, name="write_file")
 read_file_tool = client.create_tool(read_file, name="read_file")
 sms_tool = client.create_tool(send_text_message, name="send_text_message")
 search_tool = client.create_tool(google_search, name="google_search")
-schedule_tool = client.create_tool(schedule_event, name="schedule_event")
+schedule_event_tool = client.create_tool(schedule_event, name="schedule_event")
+list_upcoming_events_tool = client.create_tool(list_upcoming_events, name="list_upcoming_events")
 create_repo_tool = client.create_tool(create_git_repo, name="create_git_repo")
 security_news_tool = client.create_tool(fetch_security_news, name="fetch_security_news")
 send_security_newsletter_tool = client.create_tool(send_security_newsletter, name="send_security_newsletter")
@@ -68,7 +72,7 @@ with open('human.txt', 'r') as file:
 agent_state = client.create_agent(
     name="Jarvis", memory=TaskMemory(human=human, persona=persona,
     tasks=[]),
-    tools=[sms_tool.name, search_tool.name, schedule_tool.name, create_repo_tool.name, read_file_tool.name, write_file_tool.name, security_news_tool.name, send_security_newsletter_tool.name]
+    tools=[sms_tool.name, search_tool.name, schedule_event_tool.name, list_upcoming_events_tool.name, create_repo_tool.name, read_file_tool.name, write_file_tool.name, security_news_tool.name, send_security_newsletter_tool.name]
 )
 
 print(f"Created agent: {agent_state.name} with ID {str(agent_state.id)}")
