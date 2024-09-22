@@ -10,7 +10,6 @@ This is J.A.R.V.I.S, a personal AI assistant designed to handle various tasks in
 - WebSocket-based communication between frontend and backend.
 - Support for AI-assisted conversations with dynamic responses.
 - Thought messages visually distinct from other messages.
-- Responsive UI for mobile and desktop usage (WIP).
 - Markdown support for messages, including bullet points and formatting (WIP).
 - SMS messaging integration using Twilio (Currently send only) (WIP).
 - Google Search Capabilities.
