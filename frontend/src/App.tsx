@@ -38,6 +38,18 @@ function App() {
   const [transcription, setTranscription] = useState(''); // Transcription state
   // Simulate fetching tasks from agent's memory (for now we use mock tasks)
   const [tasks, setTasks] = useState<string[]>([]);
+  // Load messages from localStorage when the component is mounted
+  useEffect(() => {
+    const savedMessages = localStorage.getItem("chatMessages");
+    if (savedMessages) {
+      setMessages(JSON.parse(savedMessages));
+    }
+  }, []);
+
+  // Store messages in localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem("chatMessages", JSON.stringify(messages));
+  }, [messages]);
 
   useEffect(() => {
     const fetchedTasks = [
@@ -47,6 +59,7 @@ function App() {
     ]; // Mock tasks
     setTasks(fetchedTasks);
   }, []);
+
   // WebSocket connection setup with proper initialization
   const [ws, setWs] = useState<WebSocket | null>(null);
 
@@ -229,6 +242,7 @@ function App() {
       </Flex>
       <LiveTranscription transcription={transcription} />
       <MessageInput
+        setMessages={setMessages}
         onSendMessage={handleSendMessage}
         toggleLeftPanel={toggleLeftPanel}
         toggleRightPanel={toggleRightPanel}

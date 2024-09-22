@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { HStack, IconButton, CircularProgress, CircularProgressLabel, Textarea, Box, Flex } from '@chakra-ui/react';
+import { HStack, IconButton, CircularProgress, CircularProgressLabel, Textarea, Box, Flex, Button } from '@chakra-ui/react';
 import { ArrowUpIcon, AttachmentIcon, CalendarIcon } from '@chakra-ui/icons';
 import { FiMic } from 'react-icons/fi';
 
@@ -7,12 +7,14 @@ interface MessageInputProps {
   onSendMessage: (message: string) => void;
   audioLevel: number;
   isListening: boolean;
+  setMessages: React.Dispatch<React.SetStateAction<any[]>>;  // Accept setMessages as a prop
   toggleListening: () => void;
   toggleLeftPanel: () => void;   // Prop for toggling the left panel
   toggleRightPanel: () => void;  // Prop for toggling the right panel
 }
 
 const MessageInput: React.FC<MessageInputProps> = ({
+  setMessages,
   onSendMessage,
   audioLevel,
   isListening,
@@ -21,7 +23,11 @@ const MessageInput: React.FC<MessageInputProps> = ({
   toggleRightPanel
 }) => {
   const [editorContent, setEditorContent] = useState('');
-
+  // Function to handle clearing messages
+  const handleClearMessages = (setMessages: React.Dispatch<React.SetStateAction<any[]>>) => {
+    setMessages([]);  // Clear messages from UI
+    localStorage.removeItem("chatMessages");  // Clear messages from localStorage
+  };
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault(); // Prevent the default behavior of creating a new line
@@ -56,7 +62,12 @@ const MessageInput: React.FC<MessageInputProps> = ({
           h="50px"  // Fixed height for uniform size
           onClick={toggleLeftPanel} // Call the prop function to toggle the left panel
         />
-
+        {/* Clear Messages Button */}
+        <Flex justify="center" p={4}>
+          <Button colorScheme="red" onClick={() => handleClearMessages(setMessages)}>
+            Clear Messages
+          </Button>
+        </Flex>
         {/* Textarea in the center */}
         <Box flex="1" mx={4}>
           <Textarea

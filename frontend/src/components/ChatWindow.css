@@ -4,7 +4,7 @@
   padding: 10px;
   border-radius: 10px;
   margin-bottom: 10px;
-  max-width: 40%;
+  max-width: 45%;
 }
 
 /* User messages align right */
@@ -50,9 +50,9 @@
 }
 
 /* Mobile Responsiveness */
-@media (max-width: 600px) {
+@media (max-width: 800px) {
   .chat-message {
-      max-width: 80%;
+      max-width: 100%;
       overflow-y: auto; /* Enable scroll if messages are too long */
   }
 }
