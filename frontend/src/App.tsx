@@ -6,6 +6,8 @@ import ChatWindow from './components/ChatWindow';
 import MessageInput from './components/MessageInput';
 import TerminalOutput from './components/TerminalOutput';
 import LiveTranscription from './components/LiveTranscription';
+import CalendarSection from './components/CalendarSection';  // New component for Calendar
+import TaskSection from './components/TaskSection';  // New component for Tasks
 import { Message } from './types';
 
 // Declare the types for SpeechRecognition
@@ -34,7 +36,17 @@ function App() {
   const [isListening, setIsListening] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
   const [transcription, setTranscription] = useState(''); // Transcription state
+  // Simulate fetching tasks from agent's memory (for now we use mock tasks)
+  const [tasks, setTasks] = useState<string[]>([]);
 
+  useEffect(() => {
+    const fetchedTasks = [
+      "Complete report",
+      "Prepare presentation",
+      "Call Alfie",
+    ]; // Mock tasks
+    setTasks(fetchedTasks);
+  }, []);
   // WebSocket connection setup with proper initialization
   const [ws, setWs] = useState<WebSocket | null>(null);
 
@@ -209,7 +221,9 @@ function App() {
             p={4}
             overflowY="auto"
           >
-            <TerminalOutput terminalLogs={[]} />
+            {/* Render the CalendarSection and TaskSection inside the right panel */}
+            <CalendarSection />
+            <TaskSection tasks={tasks} />
           </Box>
         )}
       </Flex>

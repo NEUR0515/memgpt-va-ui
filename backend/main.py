@@ -5,12 +5,17 @@ import re
 from fastapi import FastAPI, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from memgpt import create_client
+from memgpt import create_client, memory
 from utils import say
 import uvicorn
 from dotenv import load_dotenv
 import io
 from PyPDF2 import PdfReader
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
+import os
+import datetime
+import pytz
 
 dotenv_path = join(dirname(__file__), '.env')
 load_dotenv(dotenv_path)
@@ -226,6 +231,45 @@ async def upload_file(file: UploadFile):
         return {"message": f"Error processing file {file.filename}: {e}"}
 
     return {"message": f"Successfully processed {filename}"}
+
+# Function to fetch calendar events
+def fetch_google_calendar_events():
+    TOKEN_PATH = os.path.expanduser("~/.memgpt/gcal_token.json")
+    CREDENTIALS_PATH = os.path.expanduser("~/.memgpt/google_api_credentials.json")
+    SCOPES = ["https://www.googleapis.com/auth/calendar"]
+    creds = Credentials.from_authorized_user_file(TOKEN_PATH, SCOPES)
+    service = build('calendar', 'v3', credentials=creds)
+    
+    # Define the Europe/London time zone
+    london_tz = pytz.timezone('Europe/London')
+
+    # Get the current time in the Europe/London time zone
+    now = datetime.datetime.now(london_tz).isoformat()
+
+    # Call the Calendar API to fetch events in Europe/London time zone
+    events_result = service.events().list(
+        calendarId='primary',
+        timeMin=now,
+        timeZone='Europe/London',  # Specify the time zone for the query
+        maxResults=10,
+        singleEvents=True,
+        orderBy='startTime'
+    ).execute()
+    
+    events = events_result.get('items', [])
+    
+    return events
+
+@app.get("/api/calendar-events")
+def get_calendar_events():
+    events = fetch_google_calendar_events()
+    return events
+
+# Create an API route to fetch tasks
+# @app.get("/api/tasks")
+# def get_tasks():
+#     tasks = agent_state.memory["tasks"].value  # Access tasks from agent's memory
+#     return {"tasks": tasks}
 
 if __name__ == '__main__':
     #try:

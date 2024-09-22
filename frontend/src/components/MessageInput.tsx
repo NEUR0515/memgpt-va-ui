@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { HStack, IconButton, CircularProgress, CircularProgressLabel, Textarea, Box, Flex } from '@chakra-ui/react';
-import { ArrowUpIcon, AttachmentIcon, SettingsIcon } from '@chakra-ui/icons';
+import { ArrowUpIcon, AttachmentIcon, CalendarIcon } from '@chakra-ui/icons';
 import { FiMic } from 'react-icons/fi';
 
 interface MessageInputProps {
@@ -48,6 +48,12 @@ const MessageInput: React.FC<MessageInputProps> = ({
           icon={<AttachmentIcon />}
           aria-label="Toggle File Preview"
           size="lg"
+          bg="gray.600"
+          color="white"
+          borderRadius="full"  // Make the button round
+          _hover={{ bg: 'gray.500' }}
+          w="50px"  // Fixed width for uniform size
+          h="50px"  // Fixed height for uniform size
           onClick={toggleLeftPanel} // Call the prop function to toggle the left panel
         />
 
@@ -66,12 +72,13 @@ const MessageInput: React.FC<MessageInputProps> = ({
         <IconButton
           icon={<ArrowUpIcon />}
           aria-label="Send Message"
-          variant="unstyled"
           size="lg"
           bg="blue.500"
           color="white"
-          borderRadius="full"
+          borderRadius="full"  // Make the button round
           _hover={{ bg: 'blue.400' }}
+          w="50px"  // Fixed width for uniform size
+          h="50px"  // Fixed height for uniform size
           onClick={() => {
             onSendMessage(editorContent);
             setEditorContent('');  // Clear the input after sending the message
@@ -86,6 +93,8 @@ const MessageInput: React.FC<MessageInputProps> = ({
               size="lg"
               isRound
               icon={<FiMic />}
+              w="50px"  // Fixed width for uniform size
+              h="50px"  // Fixed height for uniform size
               onClick={toggleListening}
               color={isListening ? 'red.500' : 'white'}
             />
@@ -93,16 +102,21 @@ const MessageInput: React.FC<MessageInputProps> = ({
         </CircularProgress>
 
         {/* Right Sidebar Toggle Button */}
-        {/* <IconButton
-          icon={<SettingsIcon />}
-          aria-label="Toggle Console Output"
+        <IconButton
+          icon={<CalendarIcon />}
+          aria-label="Toggle Right Sidebar"
           size="lg"
+          bg="gray.600"
+          color="white"
+          borderRadius="full"  // Make the button round
+          _hover={{ bg: 'gray.500' }}
+          w="50px"  // Fixed width for uniform size
+          h="50px"  // Fixed height for uniform size
           onClick={toggleRightPanel} // Call the prop function to toggle the right panel
-        /> */}
+        />
       </Flex>
     </Flex>
   );
-
 };
 
 export default MessageInput;
