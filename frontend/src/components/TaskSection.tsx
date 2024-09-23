@@ -10,7 +10,7 @@ const TaskSection = () => {
   useEffect(() => {
     const fetchTasks = async () => {
       try {
-        const response = await fetch('http://localhost:8000/api/tasks');
+        const response = await fetch('/api/tasks');
         const data = await response.json();
         setTasks(data.tasks || []); // Ensure tasks is an array
         setLoading(false);
@@ -25,7 +25,7 @@ const TaskSection = () => {
 
   const handleAddTask = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/tasks', {
+      const response = await fetch('/api/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ task_description: newTask }),
