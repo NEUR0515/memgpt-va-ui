@@ -83,6 +83,19 @@ function App() {
     };
   }, []);
 
+  // Function to fetch and play the TTS MP3
+  const playTTSResponse = async () => {
+    try {
+      const response = await fetch('/api/play-tts');  // This assumes the backend serves the TTS MP3 here
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+      audio.play();  // Automatically play the audio
+    } catch (error) {
+      console.error('Error playing TTS audio:', error);
+    }
+  };
+
   // Function to handle incoming WebSocket messages and trigger speech synthesis
   const handleIncomingMessage = (data: any) => {
     if (data.type === 'thought') {
@@ -105,7 +118,8 @@ function App() {
       };
       setMessages((prevMessages) => [...prevMessages, aiMessage]);
       scrollToBottom();
-
+      // Play the TTS MP3 from the backend immediately after response
+      playTTSResponse();
     }
   };
 

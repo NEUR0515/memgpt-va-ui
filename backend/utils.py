@@ -69,7 +69,7 @@ def say(message, filename="output.mp3", index=None):
         save(audio, filename)
 
         # Play the audio
-        play_audio(filename)
+        #play_audio(filename)
 
     except Exception as e:
         print(f"Error in say() function: {e}")

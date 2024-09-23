@@ -5,6 +5,7 @@ import re
 from fastapi import FastAPI, UploadFile, WebSocket, WebSocketDisconnect, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from memgpt import create_client, memory
 from utils import say
 import uvicorn
@@ -300,8 +301,15 @@ async def add_task(task: dict = Body(...)):
     
     # Push task to agent memory and save it
     agent_state.memory.task_queue_push(task_description)
-    
     return {"tasks": agent_state.memory["tasks"].value}
+    
+@app.get("/api/play-tts")
+def play_tts():
+    file_path = "output.mp3"  # Adjust to your TTS file location
+    if os.path.exists(file_path):
+        return FileResponse(file_path, media_type="audio/mpeg", filename="output.mp3")
+    else:
+        raise HTTPException(status_code=404, detail="File not found")    
 
 if __name__ == '__main__':
     #try:
