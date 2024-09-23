@@ -187,6 +187,19 @@ async def verify_user_token(token: str):
     except JWTError:
         raise HTTPException(status_code=403, detail="Token is invalid or expired")
 
+# Serve the index.html file for the protected route when someone hits "/frontend"
+@app.get("/frontend")
+def serve_frontend():
+    index_file_path = "../frontend/build/index.html" # relative path to index.html file in the "frontend" directory
+    if os.path.exists(index_file_path):
+        return FileResponse(index_file_path)
+    else:
+        return {"error": "index.html not found"}
+
+@app.get("/")
+def serve_frontend():
+    return FileResponse("../frontend/build/index.html")
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
