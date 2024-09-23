@@ -10,11 +10,9 @@ from typing import Optional, List
 from elevenlabs import Voice, VoiceSettings, play, save
 from elevenlabs.client import ElevenLabs
 
-
 client = ElevenLabs(
     api_key=os.environ.get('ELEVENLABS_API_KEY')
 )
-
 
 dotenv_path = join(dirname(__file__), '.env')
 load_dotenv(dotenv_path)
@@ -74,7 +72,6 @@ def say(message, filename="output.mp3", index=None):
     except Exception as e:
         print(f"Error in say() function: {e}")
 
-
 # Function to listen for voice input
 def listen():
     r = sr.Recognizer()
@@ -107,5 +104,5 @@ def listen_for_wake_word():
                 say("Okay, goodbye.")
                 exit()
         else:
-            print("No wake word detected, continuing to listen...")                
+            print("No wake word detected, continuing to listen...")
         time.sleep(0.5)

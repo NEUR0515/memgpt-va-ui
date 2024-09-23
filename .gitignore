@@ -10,3 +10,4 @@ security_newsletter.log
 build/
 dist/
 tasks.json
+*.db

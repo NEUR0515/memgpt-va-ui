@@ -14,9 +14,15 @@ aiohttp
 aiohttp_cors
 websockets
 fastapi
+python-multipart
 uvicorn
 elevenlabs
 feedparser
 schedule
 PyPDF2
 homeassistant_api
+bcrypt
+cryptography
+python-jose
+SQLAlchemy
+passlib
