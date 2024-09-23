@@ -251,7 +251,7 @@ def fetch_google_calendar_events():
         calendarId='primary',
         timeMin=now,
         timeZone='Europe/London',  # Specify the time zone for the query
-        maxResults=10,
+        maxResults=5,
         singleEvents=True,
         orderBy='startTime'
     ).execute()
