@@ -14,13 +14,13 @@ import io
 from PyPDF2 import PdfReader
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 import os
-#import datetime
 import pytz
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from passlib.context import CryptContext
 from models import User
 from database import SessionLocal, engine
@@ -136,11 +136,19 @@ def authenticate_user(username: str, password: str, db: Session):
 # Create access token
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
+    # Define the Europe/London time zone
+    london_tz = pytz.timezone('Europe/London')
+
+    now = datetime.now(london_tz)  # Get current time in London timezone
+
     if expires_delta:
-        expire = datetime.now(datetime.timezone.utc) + expires_delta
+        expire = now + expires_delta
     else:
-        expire = datetime.now(datetime.timezone.utc) + timedelta(minutes=15)
-    to_encode.update({"exp": expire})
+        expire = now + timedelta(minutes=15)
+
+    # Use the correct format for expiration
+    to_encode.update({"exp": expire.timestamp()})  # Use timestamp() for a numeric value
+
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
@@ -340,28 +348,39 @@ def fetch_google_calendar_events():
     TOKEN_PATH = os.path.expanduser("~/.memgpt/gcal_token.json")
     CREDENTIALS_PATH = os.path.expanduser("~/.memgpt/google_api_credentials.json")
     SCOPES = ["https://www.googleapis.com/auth/calendar"]
+    
+    # Load credentials
     creds = Credentials.from_authorized_user_file(TOKEN_PATH, SCOPES)
     service = build('calendar', 'v3', credentials=creds)
-    
+
     # Define the Europe/London time zone
     london_tz = pytz.timezone('Europe/London')
 
     # Get the current time in the Europe/London time zone
-    now = datetime.now(london_tz).isoformat()
+    now = datetime.now(london_tz)
+
+    # Format the current time as an RFC3339 string
+    now_rfc3339 = now.isoformat()
 
     # Call the Calendar API to fetch events in Europe/London time zone
-    events_result = service.events().list(
-        calendarId='primary',
-        timeMin=now,
-        timeZone='Europe/London',  # Specify the time zone for the query
-        maxResults=5,
-        singleEvents=True,
-        orderBy='startTime'
-    ).execute()
-    
-    events = events_result.get('items', [])
-    
-    return events
+    try:
+        events_result = service.events().list(
+            calendarId='primary',
+            timeMin=now_rfc3339,  # Ensure this is in RFC3339 format
+            timeZone='Europe/London',  # Specify the time zone for the query
+            maxResults=5,
+            singleEvents=True,
+            orderBy='startTime'
+        ).execute()
+        
+        events = events_result.get('items', [])
+        return events
+
+    except HttpError as error:
+        print(f"An error occurred: {error}")
+        return []
+
+
 
 # Function to initialize the tasks.json file
 def initialize_tasks_file():

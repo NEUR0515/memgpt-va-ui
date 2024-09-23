@@ -56,7 +56,7 @@ function Jarvis() {
   const [ws, setWs] = useState<WebSocket | null>(null);
 
   useEffect(() => {
-    const webSocket = new WebSocket('ws://172.16.3.80:8000/ws');
+    const webSocket = new WebSocket('ws://127.0.0.1:8000/ws');
     setWs(webSocket);
 
     webSocket.onopen = () => {
@@ -146,7 +146,7 @@ function Jarvis() {
   const handleFileUpload = async (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
-    const response = await fetch('http://172.16.3.80:8000/upload', {
+    const response = await fetch('http://127.0.0.1:8000/upload', {
       method: 'POST',
       body: formData,
     });
