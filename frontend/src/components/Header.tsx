@@ -1,6 +1,6 @@
 // components/Header.tsx
 import React from 'react';
-import { Box, HStack, IconButton, Spacer } from '@chakra-ui/react';
+import { Box, HStack, IconButton, Image } from '@chakra-ui/react';
 import { FiLogOut } from 'react-icons/fi';
 
 const handleLogout = async () => {
@@ -26,16 +26,14 @@ const handleLogout = async () => {
 const Header = () => {
   return (
     <HStack justify="space-between" p={4} bg="gray.800" align="center">
-      {/* Spacer will push the title to the center */}
-      <Spacer />
       
+      {/* Logo on the left */}
+      <Image src="/img/logo.png" alt="Logo" boxSize="50px" /> {/* Adjust the boxSize as needed */}
+
       {/* Title in the middle */}
-      <Box fontWeight="bold" fontSize="xl" textAlign="center">
+      <Box fontWeight="bold" fontSize="xl" textAlign="center" flex="1">
         J.A.R.V.I.S
       </Box>
-
-      {/* Spacer to balance the title in the center */}
-      <Spacer />
 
       {/* Logout Button on the far right */}
       <IconButton

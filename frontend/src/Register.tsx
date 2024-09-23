@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Box, Input, Button, VStack, FormControl, FormLabel, Heading, Text, Alert, AlertIcon, Spinner } from '@chakra-ui/react';
+import { Box, Input, Button, VStack, FormControl, FormLabel, Heading, Text, Alert, AlertIcon, Spinner, Image } from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
 
 const Register: React.FC = () => {
@@ -60,6 +60,11 @@ const Register: React.FC = () => {
   return (
     <Box height="100vh" display="flex" alignItems="center" justifyContent="center" bg="gray.900">
       <Box width="400px" p={6} bg="gray.700" borderRadius="md" boxShadow="lg">
+        {/* Logo at the top */}
+        <Box display="flex" justifyContent="center" mb={4}>
+          <Image src="/img/logo.png" alt="Logo" boxSize="100px" />
+        </Box>
+
         <Heading mb={6} color="white" textAlign="center">Register</Heading>
 
         {error && (

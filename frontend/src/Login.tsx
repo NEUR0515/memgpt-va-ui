@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { Box, Input, Button, VStack, FormControl, FormLabel, Heading, Text, Alert, AlertIcon, Spinner } from '@chakra-ui/react';
-import { useNavigate } from 'react-router-dom';
+import { Box, Input, Button, Text, VStack, Image } from '@chakra-ui/react';
+import { Link, useNavigate } from 'react-router-dom';
 
-const Login: React.FC = () => {
+const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  
+
   const navigate = useNavigate();
 
   const validateForm = () => {
@@ -54,59 +54,63 @@ const Login: React.FC = () => {
   };
 
   return (
-    <Box height="100vh" display="flex" alignItems="center" justifyContent="center" bg="gray.900">
-      <Box width="400px" p={6} bg="gray.700" borderRadius="md" boxShadow="lg">
-        <Heading mb={6} color="white" textAlign="center">Login</Heading>
+    <VStack spacing={4} justify="center" align="center" height="100vh" bg="gray.900">
+      {/* Logo Section */}
+      <Box mb={8}>
+        <Image src="/img/logo.png" alt="Logo" boxSize="100px" /> {/* Add your logo here */}
+      </Box>
 
-        {error && (
-          <Alert status="error" mb={4}>
-            <AlertIcon />
-            {error}
-          </Alert>
-        )}
-
+      {/* Login Form */}
+      <Box
+        bg="gray.700"
+        p={8}
+        borderRadius="md"
+        shadow="md"
+        width="100%"
+        maxWidth="400px"
+        textAlign="center"
+      >
+        <Text fontSize="2xl" fontWeight="bold" mb={4} color="white">
+          Login
+        </Text>
         <form onSubmit={handleSubmit}>
           <VStack spacing={4}>
-            <FormControl id="username">
-              <FormLabel color="gray.300">Username</FormLabel>
-              <Input 
-                value={username} 
-                onChange={(e) => setUsername(e.target.value)} 
-                placeholder="Enter your username" 
-                bg="gray.600" 
-                color="white"
-                focusBorderColor="blue.500"
-              />
-            </FormControl>
-
-            <FormControl id="password">
-              <FormLabel color="gray.300">Password</FormLabel>
-              <Input 
-                type="password" 
-                value={password} 
-                onChange={(e) => setPassword(e.target.value)} 
-                placeholder="Enter your password" 
-                bg="gray.600" 
-                color="white"
-                focusBorderColor="blue.500"
-              />
-            </FormControl>
-
-            <Button type="submit" colorScheme="blue" width="full" disabled={loading}>
-              {loading ? <Spinner size="sm" /> : 'Login'}
+            <Input
+              placeholder="Username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              bg="gray.600"
+              color="white"
+            />
+            <Input
+              placeholder="Password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              bg="gray.600"
+              color="white"
+            />
+            <Button
+              type="submit"
+              isLoading={loading}
+              colorScheme="blue"
+              width="100%"
+            >
+              Login
             </Button>
-
-            {/* Link to Register */}
-            <Text color="gray.400" fontSize="sm">
-              Don't have an account?{' '}
-              <Text as="span" color="blue.300" cursor="pointer" onClick={() => navigate('/register')}>
-                Register
-              </Text>
-            </Text>
           </VStack>
         </form>
+        {error && <Text color="red.500" mt={4}>{error}</Text>}
+        <Text mt={4} color="gray.300">
+          Don't have an account?{' '}
+          <Link to="/register">
+            <Text as="span" color="blue.400" fontWeight="bold">
+              Register
+            </Text>
+          </Link>
+        </Text>
       </Box>
-    </Box>
+    </VStack>
   );
 };
 
