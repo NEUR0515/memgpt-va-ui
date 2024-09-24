@@ -9,6 +9,7 @@ from memgpt.memory import ChatMemory, MemoryModule
 from typing import Optional, List
 from elevenlabs import Voice, VoiceSettings, play, save
 from elevenlabs.client import ElevenLabs
+import uuid
 
 client = ElevenLabs(
     api_key=os.environ.get('ELEVENLABS_API_KEY')
@@ -27,29 +28,36 @@ def play_audio(file_path):
         time.sleep(1)
 
 def say(message, filename="output.mp3", index=None):
-    voice = Voice(
-        voice_id="cmiele1eY3uGFqJdZTKJ",
-        settings=VoiceSettings(
-            stability=0.66,
-            similarity_boost=1,
-            use_sayer_boost=True
-        )
-    )
-    
-    audio = client.generate(
-        text=message,
-        voice=voice,
-        model="eleven_multilingual_v2"
-    )
-
     try:
-        # Stop any current playback and fully uninitialize pygame to release the file
+        # Ensure the API key is loaded
+        api_key = os.getenv("ELEVENLABS_API_KEY")
+        if not api_key:
+            raise Exception("ELEVENLABS_API_KEY is missing from the environment variables.")
+
+        # Initialize the ElevenLabs client
+        client = ElevenLabs(api_key=api_key)
+
+        # Define the voice and its settings
+        voice = Voice(
+            voice_id="cmiele1eY3uGFqJdZTKJ",  # Use your specific voice ID here
+            settings=VoiceSettings(
+                stability=0.66,
+                similarity_boost=1,
+                use_sayer_boost=True
+            )
+        )
+
+        # Generate the audio using the ElevenLabs API
+        audio = client.generate(
+            text=message,
+            voice=voice,
+            model="eleven_multilingual_v2"
+        )
+
+        # Stop any current playback and uninitialize pygame to release the file
         if pygame.mixer.get_init() and pygame.mixer.music.get_busy():
             pygame.mixer.music.stop()
         pygame.mixer.quit()  # Fully quit pygame mixer
-
-        # Ensure pygame fully releases the resources
-        time.sleep(1)  # Small delay to ensure pygame quits completely
 
         # Retry mechanism to ensure the file is not in use before removing it
         retry_count = 0
@@ -66,7 +74,7 @@ def say(message, filename="output.mp3", index=None):
         # Save the new audio file
         save(audio, filename)
 
-        # Play the audio
+        # Play the audio file after saving
         #play_audio(filename)
 
     except Exception as e:

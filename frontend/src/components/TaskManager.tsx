@@ -9,35 +9,71 @@ const TaskManager: React.FC = () => {
 
   // Fetch tasks from backend
   useEffect(() => {
-    fetch("/api/tasks")
-      .then(res => res.json())
-      .then(data => {
-        setTasks(data.tasks || []);  // Ensure tasks is an array
+    async function fetchTasks() {
+      const token = localStorage.getItem('token');  // Get token from localStorage
+      if (!token) {
+        setError('No token found');
         setLoading(false);
-      })
-      .catch(() => {
+        return;
+      }
+
+      try {
+        const response = await fetch("/api/tasks", {
+          headers: {
+            'Authorization': `Bearer ${token}`  // Pass the token in the headers
+          }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setTasks(data.tasks || []);  // Ensure tasks is an array
+        } else if (response.status === 401 || response.status === 403) {
+          setError('Unauthorized or Forbidden. Please check your token.');
+        } else {
+          setError('Error fetching tasks');
+        }
+      } catch (error) {
         setError('Error fetching tasks');
+      } finally {
         setLoading(false);
-      });
+      }
+    }
+
+    fetchTasks();
   }, []);
 
   // Function to handle adding a task
-  const addTask = () => {
+  const addTask = async () => {
     if (!newTask.trim()) {
       setError('Task cannot be empty');
       return;
     }
 
-    fetch('/api/tasks/add', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ task: newTask })
-    })
-      .then(res => res.json())
-      .then(data => setTasks(data.tasks || []))  // Update task list in the UI
-      .catch(() => setError('Error adding task'));
+    const token = localStorage.getItem('token');  // Get token from localStorage
+    if (!token) {
+      setError('No token found');
+      return;
+    }
 
-    setNewTask('');  // Clear the input
+    try {
+      const response = await fetch('/api/tasks/add', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`  // Pass the token in the headers
+        },
+        body: JSON.stringify({ task: newTask })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setTasks(data.tasks || []);  // Update task list in the UI
+        setNewTask('');  // Clear the input
+      } else {
+        setError('Error adding task');
+      }
+    } catch (error) {
+      setError('Error adding task');
+    }
   };
 
   return (

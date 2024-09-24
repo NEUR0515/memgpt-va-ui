@@ -1,5 +1,5 @@
-import React from 'react';
-import { Box, HStack, IconButton, Image, useColorMode, useColorModeValue } from '@chakra-ui/react';
+import React, { useState, useEffect } from 'react';
+import { Box, HStack, IconButton, Image, useColorMode, useColorModeValue, Text } from '@chakra-ui/react';
 import { FiLogOut, FiSun, FiMoon } from 'react-icons/fi';
 
 const handleLogout = async () => {
@@ -24,6 +24,41 @@ const handleLogout = async () => {
 
 const Header = () => {
   const { colorMode, toggleColorMode } = useColorMode();
+  const [username, setUsername] = useState('');
+
+  useEffect(() => {
+    const fetchUsername = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        // Redirect to login if no token
+        window.location.href = '/login';
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/user-info', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (response.status === 403) {
+          // Token expired or invalid, redirect to login
+          console.error('Token expired or invalid. Redirecting to login.');
+          localStorage.removeItem('token');
+          window.location.href = '/login';
+          return;
+        }
+        
+        const data = await response.json();
+        setUsername(data.username);
+      } catch (error) {
+        console.error('Error fetching username:', error);
+      }
+    };
+
+    fetchUsername();
+  }, []);
 
   // Dynamic styling based on color mode (light or dark)
   const bg = useColorModeValue('gray.100', 'gray.900');  // Light gray for light mode, dark gray for dark mode
@@ -31,14 +66,19 @@ const Header = () => {
   const hoverColor = useColorModeValue('gray.200', 'gray.700');  // Slightly lighter/darker for hover effects
 
   return (
-    <HStack justify="space-between" p={4} bg={bg} align="center" boxShadow="md">
+    <HStack justify="space-between" p={4} bg={bg} align="center" boxShadow="md" width="100%" maxW="100vw">
       {/* Logo on the left */}
-      <Image src="/img/logo.png" alt="Logo" boxSize="50px" />
+      <Image src="/img/logo.png" alt="Logo" boxSize={{ base: "40px", md: "50px" }} />
 
       {/* Title in the middle */}
-      <Box fontWeight="bold" fontSize="xl" textAlign="center" color={textColor} flex="1">
+      <Box fontWeight="bold" fontSize={{ base: "lg", md: "xl" }} textAlign="center" whiteSpace="nowrap" color={textColor} flex="1">
         J.A.R.V.I.S
       </Box>
+
+      {/* Display the username */}
+      <Text fontSize={{ base: "md", md: "lg" }} color={textColor}>
+        {username ? `Welcome, ${username}` : 'Loading...'}
+      </Text>
 
       {/* Toggle Theme Button */}
       <IconButton
@@ -55,7 +95,7 @@ const Header = () => {
       <IconButton
         icon={<FiLogOut />}  // Use the logout icon
         aria-label="Logout"
-        size="lg"
+        size="md"
         onClick={handleLogout}
         bg="red.500"
         color="white"

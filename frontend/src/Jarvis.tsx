@@ -4,10 +4,8 @@ import Header from './components/Header';
 import FileUploader from './components/FileUploader';
 import ChatWindow from './components/ChatWindow';
 import MessageInput from './components/MessageInput';
-// import TerminalOutput from './components/TerminalOutput';
 import LiveTranscription from './components/LiveTranscription';
-import CalendarSection from './components/CalendarSection';  // New component for Calendar
-// import TaskSection from './components/TaskSection';  // New component for Tasks
+import CalendarSection from './components/CalendarSection';  
 import TaskManager from './components/TaskManager';
 import { Message } from './types';
 
@@ -29,36 +27,76 @@ recognition.lang = 'en-GB';
 function Jarvis() {
   const { isOpen: isLeftPanelOpen, onToggle: toggleLeftPanel } = useDisclosure();
   const { isOpen: isRightPanelOpen, onToggle: toggleRightPanel } = useDisclosure();
-  // const [terminalLogs, setTerminalLogs] = useState<string[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [isPageLoaded, setIsPageLoaded] = useState(false);  // Track if the page is fully loaded
+  const [lastPlayedMessage, setLastPlayedMessage] = useState<string | null>(null);  // Track the last played message
+  const [isPageReloaded, setIsPageReloaded] = useState(true); // New flag to track if messages are from localStorage
+  const [username, setUsername] = useState<string | null>(null);
+
 
   // State for microphone listening
   const [isListening, setIsListening] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
   const [transcription, setTranscription] = useState(''); // Transcription state
-  // Simulate fetching tasks from agent's memory (for now we use mock tasks)
 
   // Load messages from localStorage when the component is mounted
   useEffect(() => {
     const savedMessages = localStorage.getItem("chatMessages");
     if (savedMessages) {
-      setMessages(JSON.parse(savedMessages));
+      try {
+        setMessages(JSON.parse(savedMessages));
+        console.log("Messages loaded from localStorage:", savedMessages);
+      } catch (error) {
+        console.error("Error parsing saved messages:", error);
+      }
     }
 
-    // Set the page as loaded after initial messages are fetched
-    setIsPageLoaded(true);
-  }, []);
+    // After loading messages from localStorage, we set this flag to false, indicating a fresh start
+    setIsPageReloaded(false);
+  }, []);  // Only load messages once, on component mount
 
   // Store messages in localStorage whenever they change
   useEffect(() => {
-    localStorage.setItem("chatMessages", JSON.stringify(messages));
-  }, [messages]);
+    if (messages.length > 0) {
+      localStorage.setItem("chatMessages", JSON.stringify(messages));
+      console.log("Messages saved to localStorage:", messages);
+    }
+  }, [messages]);  // Only update when messages change
 
   // WebSocket connection setup with proper initialization
   const [ws, setWs] = useState<WebSocket | null>(null);
 
+  useEffect(() => {
+    const fetchUsername = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        // Redirect to login if no token
+        window.location.href = '/login';
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/user-info', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        
+        if (response.status === 403) {
+          // Token expired or invalid, redirect to login
+          localStorage.removeItem('token');
+          window.location.href = '/login';
+        } else {
+          const data = await response.json();
+          setUsername(data.username);  // Store the username in state
+        }
+      } catch (error) {
+        console.error('Error fetching username:', error);
+      }
+    };
+
+    fetchUsername();
+  }, []);  // Run once when the component mounts
   useEffect(() => {
     const token = localStorage.getItem("token");  // Get the token from localStorage or wherever it's stored
     const webSocket = new WebSocket(`${process.env.REACT_APP_WS_URL}?token=${token}`);
@@ -66,7 +104,6 @@ function Jarvis() {
   
     webSocket.onopen = () => {
       console.log("WebSocket connection opened.");
-      // console.log('PUBLIC_URL:', process.env.PUBLIC_URL);
     };
   
     webSocket.onmessage = (event) => {
@@ -87,12 +124,29 @@ function Jarvis() {
         webSocket.close();  // Close WebSocket when the component unmounts
       }
     };
-  }, []);  // Remove `isPageLoaded` dependency to establish the connection as soon as the component mounts
+  }, []);  // Ensure WebSocket connection is made on component mount
 
   // Function to fetch and play the TTS MP3
   const playTTSResponse = async () => {
     try {
-      const response = await fetch('/api/play-tts');  // This assumes the backend serves the TTS MP3 here
+      const token = localStorage.getItem('token');  // Assuming the token is stored in localStorage
+      if (!token) {
+        console.log('No token found');
+        return;
+      }
+  
+      // Fetch the TTS MP3 from the server
+      const response = await fetch('/api/play-tts', {
+        headers: {
+          'Authorization': `Bearer ${token}`,  // Pass the token in the headers
+        },
+      });
+  
+      if (!response.ok) {
+        console.error(`Error: ${response.status} - ${response.statusText}`);
+        return;
+      }
+  
       const audioBlob = await response.blob();
       const audioUrl = URL.createObjectURL(audioBlob);
       const audio = new Audio(audioUrl);
@@ -124,10 +178,12 @@ function Jarvis() {
       };
       setMessages((prevMessages) => [...prevMessages, aiMessage]);
       scrollToBottom();
-      
-      // Only play the TTS if the page has fully loaded (prevent it from playing on reload)
-      if (isPageLoaded) {
+
+      // Only play the TTS if the message is new and different from the last played one
+      // Also, do not play TTS for messages loaded from localStorage (isPageReloaded === false)
+      if (data.message !== lastPlayedMessage) {
         playTTSResponse();
+        setLastPlayedMessage(data.message);  // Update the last played message
       }
     }
   };
@@ -137,7 +193,7 @@ function Jarvis() {
       role: 'user',
       content: message,
       timestamp: new Date().toLocaleTimeString(),
-      name: 'User',
+      name: username ?? 'User',  // Use the username or default to 'User'
     };
 
     if (ws && ws.readyState === WebSocket.OPEN) {
@@ -244,7 +300,7 @@ function Jarvis() {
           </Box>
         )}
         <Box flex="1" bg={bgColor} p={4}>
-          <ChatWindow messages={messages} messagesEndRef={messagesEndRef} />
+          <ChatWindow messages={messages} messagesEndRef={messagesEndRef} username={username ?? 'User'} />
         </Box>
         {isRightPanelOpen && (
           <Box

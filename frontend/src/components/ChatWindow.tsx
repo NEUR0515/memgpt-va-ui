@@ -7,6 +7,7 @@ import './ChatWindow.css';  // Import the CSS file
 interface ChatWindowProps {
   messages: Message[];  // Messages array to render
   messagesEndRef: React.RefObject<HTMLDivElement>;  // Ref for scrolling
+  username: string;  // Pass the username prop
 }
 
 const getAvatarSrc = (role: string) => {
@@ -16,7 +17,7 @@ const getAvatarSrc = (role: string) => {
   return '/img/jarvis.gif';  // Path to Jarvis avatar
 };
 
-const ChatWindow: React.FC<ChatWindowProps> = ({ messages, messagesEndRef }) => {
+const ChatWindow: React.FC<ChatWindowProps> = ({ messages, messagesEndRef, username }) => {  // Add username to props
   const bgColor = useColorModeValue('gray.100', 'gray.800');
   const textColor = useColorModeValue('gray.800', 'white');
   const userBubbleColor = useColorModeValue('blue.500', 'blue.300');
@@ -49,7 +50,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ messages, messagesEndRef }) => 
             <VStack align="flex-start" spacing={1} maxWidth="fit-content">
               <HStack spacing={3}>
                 {/* Name and timestamp */}
-                <Text fontWeight="bold" color={textColor}>{message.name}</Text>
+                <Text fontWeight="bold" color={textColor}>
+                  {message.role === 'user' ? username : message.name} {/* Show username for user */}
+                </Text>
                 <Text fontSize="xs" color="gray.400">{message.timestamp}</Text>
               </HStack>
 

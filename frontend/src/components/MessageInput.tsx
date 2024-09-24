@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { HStack, IconButton, CircularProgress, CircularProgressLabel, Textarea, Box, Flex, Button, useColorModeValue } from '@chakra-ui/react';
+import { IconButton, CircularProgress, CircularProgressLabel, Textarea, Box, Flex, Button, useColorModeValue, useBreakpointValue } from '@chakra-ui/react';
 import { ArrowUpIcon, AttachmentIcon, CalendarIcon } from '@chakra-ui/icons';
 import { FiMic } from 'react-icons/fi';
 
@@ -23,7 +23,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   toggleRightPanel
 }) => {
   const [editorContent, setEditorContent] = useState('');
-  
+
   // Function to handle clearing messages
   const handleClearMessages = (setMessages: React.Dispatch<React.SetStateAction<any[]>>) => {
     setMessages([]);  // Clear messages from UI
@@ -44,7 +44,10 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const buttonBgColor = useColorModeValue('gray.600', 'gray.600');
   const buttonHoverColor = useColorModeValue('gray.500', 'gray.500');
   const sendButtonColor = useColorModeValue('blue.500', 'blue.400');
-  
+
+  // Show only the send and mic buttons on mobile, and all buttons on larger screens
+  const showOtherButtons = useBreakpointValue({ base: false, md: true });
+
   return (
     <Flex
       width="100%"
@@ -55,32 +58,37 @@ const MessageInput: React.FC<MessageInputProps> = ({
       color={textColor}
       borderTop="1px solid"  // Adds a border to separate the input from the chat window
       borderColor={useColorModeValue('gray.200', 'gray.700')}
+      direction={{ base: 'column', md: 'row' }}  // Stack elements vertically on mobile
     >
       <Flex
         width={{ base: '100%', md: '50%' }}  // Full width on mobile, 50% on larger screens
         align="center"
         justify="space-between"
       >
-        {/* Left Sidebar Toggle Button */}
-        <IconButton
-          icon={<AttachmentIcon />}
-          aria-label="Toggle File Preview"
-          size="lg"
-          bg={buttonBgColor}
-          color="white"
-          borderRadius="full"  // Make the button round
-          _hover={{ bg: buttonHoverColor }}
-          w="50px"
-          h="50px"
-          onClick={toggleLeftPanel}  // Call the prop function to toggle the left panel
-        />
+        {/* Left Sidebar Toggle Button (Hidden on Mobile) */}
+        {showOtherButtons && (
+          <IconButton
+            icon={<AttachmentIcon />}
+            aria-label="Toggle File Preview"
+            size="lg"
+            bg={buttonBgColor}
+            color="white"
+            borderRadius="full"  // Make the button round
+            _hover={{ bg: buttonHoverColor }}
+            w="50px"
+            h="50px"
+            onClick={toggleLeftPanel}  // Call the prop function to toggle the left panel
+          />
+        )}
 
-        {/* Clear Messages Button */}
-        <Flex justify="center" p={4}>
-          <Button colorScheme="red" onClick={() => handleClearMessages(setMessages)}>
-            Clear Messages
-          </Button>
-        </Flex>
+        {/* Clear Messages Button (Hidden on Mobile) */}
+        {showOtherButtons && (
+          <Flex justify="center" p={4}>
+            <Button colorScheme="red" onClick={() => handleClearMessages(setMessages)}>
+              Clear Messages
+            </Button>
+          </Flex>
+        )}
 
         {/* Textarea in the center */}
         <Box flex="1" mx={4}>
@@ -92,6 +100,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
             onKeyDown={handleKeyDown}  // Handle key presses
             borderColor={useColorModeValue('gray.300', 'gray.600')}  // Add a border to the textarea
             _focus={{ borderColor: 'blue.500', outline: 'none' }}  // Focus state for better accessibility
+            mb={{ base: 4, md: 0 }}  // Adds margin on mobile for spacing
           />
         </Box>
 
@@ -106,6 +115,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
           _hover={{ bg: 'blue.400' }}
           w="50px"
           h="50px"
+          mb={{ base: 4, md: 0 }}  // Adds margin on mobile for spacing
           onClick={() => {
             onSendMessage(editorContent);
             setEditorContent('');  // Clear the input after sending the message
@@ -123,11 +133,11 @@ const MessageInput: React.FC<MessageInputProps> = ({
             <CircularProgressLabel>
               <IconButton
                 aria-label="Microphone"
-                size="lg"
+                size={{ base: "40px", md: "60px" }}
                 isRound
                 icon={<FiMic />}
-                w="50px"  // Fixed width for uniform size
-                h="50px"  // Fixed height for uniform size
+                w={{ base: "40px", md: "50px" }}
+                h={{ base: "40px", md: "50px" }}
                 onClick={toggleListening}
                 color={isListening ? 'red.500' : 'gray.600'}
                 bg={isListening ? 'gray.100' : 'gray.200'}  // Background color to make it stand out
@@ -137,19 +147,21 @@ const MessageInput: React.FC<MessageInputProps> = ({
           </CircularProgress>
         </Box>
 
-        {/* Right Sidebar Toggle Button */}
-        <IconButton
-          icon={<CalendarIcon />}
-          aria-label="Toggle Right Sidebar"
-          size="lg"
-          bg={buttonBgColor}
-          color="white"
-          borderRadius="full"
-          _hover={{ bg: buttonHoverColor }}
-          w="50px"
-          h="50px"
-          onClick={toggleRightPanel}  // Call the prop function to toggle the right panel
-        />
+        {/* Right Sidebar Toggle Button (Hidden on Mobile) */}
+        {showOtherButtons && (
+          <IconButton
+            icon={<CalendarIcon />}
+            aria-label="Toggle Right Sidebar"
+            size="lg"
+            bg={buttonBgColor}
+            color="white"
+            borderRadius="full"
+            _hover={{ bg: buttonHoverColor }}
+            w="50px"
+            h="50px"
+            onClick={toggleRightPanel}  // Call the prop function to toggle the right panel
+          />
+        )}
       </Flex>
     </Flex>
   );

@@ -58,11 +58,15 @@
   text-align: right;
 }
 
-/* Mobile responsiveness */
-@media (max-width: 800px) {
-  .chat-message {
-    max-width: 100%;
-    width: fit-content;
+@media (max-width: 600px) {
+  .chat-message.user, .chat-message.ai, .chat-message.thought-message {
+    max-width: 90%; /* Ensure the messages don't take up the full width */
+  }
+  
+  /* Make the avatars smaller on mobile */
+  .avatar {
+    width: 30px;
+    height: 30px;
   }
 }
 

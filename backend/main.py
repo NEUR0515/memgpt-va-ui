@@ -138,22 +138,15 @@ def authenticate_user(username: str, password: str, db: Session):
         return False
     return user
 
-# Create access token
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
-    # Define the Europe/London time zone
     london_tz = pytz.timezone('Europe/London')
-
-    now = datetime.now(london_tz)  # Get current time in London timezone
-
+    now = datetime.now(london_tz)
     if expires_delta:
         expire = now + expires_delta
     else:
-        expire = now + timedelta(minutes=15)
-
-    # Use the correct format for expiration
-    to_encode.update({"exp": expire.timestamp()})  # Use timestamp() for a numeric value
-
+        expire = now + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)  # Use the updated expiration time
+    to_encode.update({"exp": expire.timestamp()})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
@@ -177,7 +170,7 @@ def verify_token(token: str = Depends(oauth2_scheme)):
         username: str = payload.get("sub")
         if username is None:
             raise HTTPException(status_code=403, detail="Token is invalid or expired")
-        return payload
+        return {"username": username}
     except JWTError:
         raise HTTPException(status_code=403, detail="Token is invalid or expired")
 
@@ -191,6 +184,10 @@ async def verify_user_token(token: str):
         return {"message": "Token is valid"}
     except JWTError:
         raise HTTPException(status_code=403, detail="Token is invalid or expired")
+
+@app.get("/api/user-info")
+async def get_user_info(token: str = Depends(oauth2_scheme)):
+    return verify_token(token)
 
 @app.get("/frontend")
 def serve_frontend():
@@ -212,25 +209,30 @@ def serve_frontend():
         print(f"index.html not found at {index_file_path}")
         return {"error": "index.html not found"}
 
-# WebSocket endpoint
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket, token: str = Query(None)):
     # Token validation before accepting WebSocket connection
-    if token is None:
+    if not token:
         await websocket.close(code=1008)  # Close connection with specific code
-        return JSONResponse(content={"detail": "Token is missing"}, status_code=403)
-    
+        await websocket.send_json({"detail": "Token is missing"})
+        return
+
     try:
-        # Verify token
-        username = verify_token(token)
+        # Verify token using the verify_token function
+        token_payload = verify_token(token)
+        username = token_payload.get("username")
+        if not username:
+            raise HTTPException(status_code=403, detail="Token is invalid or expired")
         print(f"Token verified for user: {username}")
+
     except HTTPException as e:
         await websocket.close(code=1008)  # Close WebSocket if token is invalid
+        await websocket.send_json({"detail": "Token is invalid or expired"})
         return
 
     await websocket.accept()  # Accept WebSocket connection
     active_connections.add(websocket)
-    print("WebSocket connection accepted.")
+    print(f"WebSocket connection accepted for user: {username}")
 
     try:
         while True:
@@ -242,83 +244,50 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(None)):
                 print(f"Received message: {message.get('message')}")
 
             except WebSocketDisconnect:
-                print("WebSocket disconnected by client.")
+                print(f"WebSocket disconnected by {username}.")
                 break
 
             try:
-                command = json.loads(data).get('message', '').lower()
+                command = message.get('message', '').lower()
                 print(f"Processing command: {command}")
 
                 if command:
                     if "exit" in command or "stop" in command:
                         await websocket.close()
-                        print("WebSocket closed on 'exit' or 'stop' command.")
+                        print(f"WebSocket closed on 'exit' or 'stop' command by {username}.")
                         break
                     else:
-                        response = client.user_message(
-                            agent_id=agent_state.id,
-                            message=command
-                        )
+                        response = client.user_message(agent_id=agent_state.id, message=command)
 
-                        # Handle thought messages separately if they exist
                         thought_message = response.messages[0].get("internal_monologue")
                         if thought_message:
-                            thought_payload = {
+                            await websocket.send_json({
                                 "type": "thought",
                                 "message": thought_message
-                            }
-                            await websocket.send_json(thought_payload)
+                            })
                             print(f"Sent thought message: {thought_message}")
 
-                        # Consolidate message broadcasting to avoid duplicates
-                        spoken_message = None  # Initialize spoken_message as None
-
-                        # Check assistant message first
+                        assistant_message = None
                         if response.messages:
                             for r in response.messages:
                                 if "assistant_message" in r:
-                                    spoken_message = r.get("assistant_message")
-                                    print(f"Assistant message found: {spoken_message}")
-                                    break  # Ensure only one assistant message is handled
+                                    assistant_message = r.get("assistant_message")
+                                    #break
 
-                                elif "function_call" in r:
-                                    print(f"Function call found: {r['function_call']}")
-                                    match = re.search(r"send_message\((.*)\)", r["function_call"])
-                                    if match:
-                                        try:
-                                            arguments = match.group(1)
-                                            arguments_dict = ast.literal_eval(arguments)  # Safely evaluate the arguments
-                                            print(f"Extracted arguments: {arguments_dict}")
-                                            if 'message' in arguments_dict:
-                                                spoken_message = arguments_dict["message"]
-                                                print(f"Message from function call: {spoken_message}")
-                                                break  # Ensure only one function call message is handled
-                                        except (SyntaxError, ValueError) as e:
-                                            print(f"Error parsing function call arguments: {e}")
-                                    else:
-                                        print("No match found for 'send_message' function call")
-
-                        # After loop, check if spoken_message is still None or empty
-                        if not spoken_message:
-                            print("No valid assistant message or function call message found.")
-
-                        if spoken_message:
-                            await broadcast_message(spoken_message)
-                            #say(spoken_message)
-                            print(f"Broadcasted message: {spoken_message}")
+                        if assistant_message:
+                            await broadcast_message(assistant_message)
+                            say(assistant_message)
+                            print(f"Broadcasted message: {assistant_message}")
 
             except Exception as e:
                 print(f"Error processing message: {str(e)}")
                 await websocket.send_text(f"Error: {str(e)}")
 
     except WebSocketDisconnect:
-        print("WebSocket disconnected gracefully.")
-    except Exception as e:
-        print(f"WebSocket Error: {str(e)}")
+        print(f"WebSocket disconnected gracefully by {username}.")
     finally:
         active_connections.remove(websocket)
-        print("WebSocket connection closed.")
-        await broadcast_log("WebSocket connection closed")
+        await broadcast_log(f"WebSocket connection closed for {username}.")
 
 # Function to broadcast log messages to all active WebSocket connections
 async def broadcast_log(log: str):
@@ -418,8 +387,6 @@ def fetch_google_calendar_events():
         print(f"An error occurred: {error}")
         return []
 
-
-
 # Function to initialize the tasks.json file
 def initialize_tasks_file():
     # Check if tasks.json exists and is not empty
@@ -437,20 +404,19 @@ else:
     tasks = []
 
 @app.get("/api/calendar-events")
-def get_calendar_events():
+def get_calendar_events(token: str = Depends(verify_token)):
     events = fetch_google_calendar_events()
     return events
 
 # Endpoint to get tasks from tasks.json
 @app.get("/api/tasks")
-def get_tasks():
+def get_tasks(token: str = Depends(verify_token)):
     if not exists('./tasks.json'):
         return {"tasks": []}  # Return empty list if file doesn't exist
 
     with open('./tasks.json', 'r') as f:
         tasks = json.load(f)
     
-    # Debugging output
     print(f"Tasks loaded from JSON: {tasks}")
     return {"tasks": tasks}
 
@@ -462,14 +428,17 @@ async def add_task(task: dict = Body(...)):
     agent_state.memory.task_queue_push(task_description)
     return {"tasks": agent_state.memory["tasks"].value}
     
-@app.get("/api/play-tts")
-def play_tts():
-    file_path = "output.mp3"  # Adjust to your TTS file location
+@app.get("/api/play-tts", response_class=FileResponse)
+def play_tts(token: str = Depends(verify_token)):
+    # Define the path to the latest generated TTS MP3 file
+    file_path = "output.mp3"  # Replace with your actual path if necessary
+
     if os.path.exists(file_path):
+        # Return the audio file if it exists
         return FileResponse(file_path, media_type="audio/mpeg", filename="output.mp3")
     else:
+        # Return a 404 error if the file is not found
         raise HTTPException(status_code=404, detail="File not found")
-    
  # Include the router for authentication-related routes
 app.include_router(auth_router)
 

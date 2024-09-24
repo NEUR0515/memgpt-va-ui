@@ -8,9 +8,28 @@ const CalendarSection: React.FC = () => {
   useEffect(() => {
     async function fetchEvents() {
       try {
-        const response = await fetch('/api/calendar-events');
-        const data = await response.json();
-        setEvents(data);
+        const token = localStorage.getItem('token'); // Get the token from localStorage
+        if (!token) {
+          console.error('No token found in localStorage');
+          setLoading(false);
+          return;
+        }
+
+        const response = await fetch('/api/calendar-events', {
+          headers: {
+            'Authorization': `Bearer ${token}`,  // Pass the token in the headers
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setEvents(data);
+        } else if (response.status === 401 || response.status === 403) {
+          console.error('Unauthorized or Forbidden. Please check your token.');
+        } else {
+          console.error('Error fetching calendar events:', response.status);
+        }
+
         setLoading(false);
       } catch (error) {
         console.error('Error fetching calendar events:', error);
