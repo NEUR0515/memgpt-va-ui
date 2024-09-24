@@ -1,13 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Flex, Box, useDisclosure } from '@chakra-ui/react';
+import { Flex, Box, useDisclosure, useColorModeValue } from '@chakra-ui/react';
 import Header from './components/Header';
 import FileUploader from './components/FileUploader';
 import ChatWindow from './components/ChatWindow';
 import MessageInput from './components/MessageInput';
-import TerminalOutput from './components/TerminalOutput';
+// import TerminalOutput from './components/TerminalOutput';
 import LiveTranscription from './components/LiveTranscription';
 import CalendarSection from './components/CalendarSection';  // New component for Calendar
-import TaskSection from './components/TaskSection';  // New component for Tasks
+// import TaskSection from './components/TaskSection';  // New component for Tasks
 import TaskManager from './components/TaskManager';
 import { Message } from './types';
 
@@ -29,9 +29,10 @@ recognition.lang = 'en-GB';
 function Jarvis() {
   const { isOpen: isLeftPanelOpen, onToggle: toggleLeftPanel } = useDisclosure();
   const { isOpen: isRightPanelOpen, onToggle: toggleRightPanel } = useDisclosure();
-  const [terminalLogs, setTerminalLogs] = useState<string[]>([]);
+  // const [terminalLogs, setTerminalLogs] = useState<string[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [isPageLoaded, setIsPageLoaded] = useState(false);  // Track if the page is fully loaded
 
   // State for microphone listening
   const [isListening, setIsListening] = useState(false);
@@ -45,6 +46,9 @@ function Jarvis() {
     if (savedMessages) {
       setMessages(JSON.parse(savedMessages));
     }
+
+    // Set the page as loaded after initial messages are fetched
+    setIsPageLoaded(true);
   }, []);
 
   // Store messages in localStorage whenever they change
@@ -56,32 +60,34 @@ function Jarvis() {
   const [ws, setWs] = useState<WebSocket | null>(null);
 
   useEffect(() => {
-    const webSocket = new WebSocket('ws://127.0.0.1:8000/ws');
+    const token = localStorage.getItem("token");  // Get the token from localStorage or wherever it's stored
+    const webSocket = new WebSocket(`${process.env.REACT_APP_WS_URL}?token=${token}`);
     setWs(webSocket);
-
+  
     webSocket.onopen = () => {
       console.log("WebSocket connection opened.");
+      // console.log('PUBLIC_URL:', process.env.PUBLIC_URL);
     };
-
+  
     webSocket.onmessage = (event) => {
       const data = JSON.parse(event.data);
       handleIncomingMessage(data);
     };
-
+  
     webSocket.onerror = (error) => {
       console.error("WebSocket error:", error);
     };
-
+  
     webSocket.onclose = () => {
       console.log("WebSocket connection closed.");
     };
-
+  
     return () => {
       if (webSocket.readyState !== WebSocket.CLOSED) {
         webSocket.close();  // Close WebSocket when the component unmounts
       }
     };
-  }, []);
+  }, []);  // Remove `isPageLoaded` dependency to establish the connection as soon as the component mounts
 
   // Function to fetch and play the TTS MP3
   const playTTSResponse = async () => {
@@ -118,8 +124,11 @@ function Jarvis() {
       };
       setMessages((prevMessages) => [...prevMessages, aiMessage]);
       scrollToBottom();
-      // Play the TTS MP3 from the backend immediately after response
-      playTTSResponse();
+      
+      // Only play the TTS if the page has fully loaded (prevent it from playing on reload)
+      if (isPageLoaded) {
+        playTTSResponse();
+      }
     }
   };
 
@@ -212,6 +221,9 @@ function Jarvis() {
     return () => clearInterval(interval);
   }, []);
 
+  const bgColor = useColorModeValue('gray.100', 'gray.800');
+  const textColor = useColorModeValue('gray.800', 'white');
+
   return (
     <Flex direction="column" height="100vh">
       <Header />
@@ -223,20 +235,21 @@ function Jarvis() {
         {isLeftPanelOpen && (
           <Box
             width={{ base: '100%', md: '20%' }}  // Full width on mobile
-            bg="gray.700"
+            bg={bgColor}
+            color={textColor}
             p={4}
             overflowY="auto"
           >
             <FileUploader onFileUpload={handleFileUpload} />
           </Box>
         )}
-        <Box flex="1" bg="gray.800" p={4}>
+        <Box flex="1" bg={bgColor} p={4}>
           <ChatWindow messages={messages} messagesEndRef={messagesEndRef} />
         </Box>
         {isRightPanelOpen && (
           <Box
             width={{ base: '100%', md: '20%' }}  // Full width on mobile
-            bg="gray.700"
+            bg={bgColor}
             p={4}
             overflowY="auto"
           >

@@ -2,7 +2,7 @@ import json
 from os.path import join, dirname, exists
 import ast
 import re
-from fastapi import FastAPI, UploadFile, WebSocket, WebSocketDisconnect, HTTPException, Body, Depends, status
+from fastapi import FastAPI, UploadFile, WebSocket, WebSocketDisconnect, HTTPException, Body, Depends, status, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -46,7 +46,7 @@ app.add_middleware(
 
 # Mount the correct static directory to serve the JS and CSS files
 app.mount("/static", StaticFiles(directory="../frontend/build/static"), name="static")
-app.mount("/frontend", StaticFiles(directory="../frontend/build", html=True), name="frontend")
+#app.mount("/frontend", StaticFiles(directory="../frontend/build", html=True), name="frontend")
 app.mount("/img", StaticFiles(directory="../frontend/public/img"), name="img")
 
 # Dependency
@@ -98,6 +98,11 @@ if not agent_state:
 if not source_state:
     print(f"No source with the name '{data_source_name}' was found. It will now be created.")
     client.create_source(name=data_source_name)
+    source_state = get_existing_source(data_source_name)
+    if not source_state:
+        print("The source was created but could not be found. Please try again.")
+        exit(1)
+    
     
 client.attach_source_to_agent(source_state.id, agent_id=agent_state.id)
 # Store active WebSocket connections
@@ -187,22 +192,43 @@ async def verify_user_token(token: str):
     except JWTError:
         raise HTTPException(status_code=403, detail="Token is invalid or expired")
 
-# Serve the index.html file for the protected route when someone hits "/frontend"
 @app.get("/frontend")
 def serve_frontend():
-    index_file_path = "../frontend/build/index.html" # relative path to index.html file in the "frontend" directory
+    index_file_path = "../frontend/build/index.html"
     if os.path.exists(index_file_path):
+        print(f"Serving frontend from {index_file_path}")
         return FileResponse(index_file_path)
     else:
+        print(f"index.html not found at {index_file_path}")
         return {"error": "index.html not found"}
 
 @app.get("/")
 def serve_frontend():
-    return FileResponse("../frontend/build/index.html")
+    index_file_path = "../frontend/build/index.html"
+    if os.path.exists(index_file_path):
+        print(f"Serving frontend from {index_file_path}")
+        return FileResponse(index_file_path)
+    else:
+        print(f"index.html not found at {index_file_path}")
+        return {"error": "index.html not found"}
 
+# WebSocket endpoint
 @app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
+async def websocket_endpoint(websocket: WebSocket, token: str = Query(None)):
+    # Token validation before accepting WebSocket connection
+    if token is None:
+        await websocket.close(code=1008)  # Close connection with specific code
+        return JSONResponse(content={"detail": "Token is missing"}, status_code=403)
+    
+    try:
+        # Verify token
+        username = verify_token(token)
+        print(f"Token verified for user: {username}")
+    except HTTPException as e:
+        await websocket.close(code=1008)  # Close WebSocket if token is invalid
+        return
+
+    await websocket.accept()  # Accept WebSocket connection
     active_connections.add(websocket)
     print("WebSocket connection accepted.")
 
@@ -233,6 +259,7 @@ async def websocket_endpoint(websocket: WebSocket):
                             agent_id=agent_state.id,
                             message=command
                         )
+
                         # Handle thought messages separately if they exist
                         thought_message = response.messages[0].get("internal_monologue")
                         if thought_message:
@@ -244,11 +271,9 @@ async def websocket_endpoint(websocket: WebSocket):
                             print(f"Sent thought message: {thought_message}")
 
                         # Consolidate message broadcasting to avoid duplicates
-                        spoken_message = None
-
-                        # Check assistant message first
                         spoken_message = None  # Initialize spoken_message as None
 
+                        # Check assistant message first
                         if response.messages:
                             for r in response.messages:
                                 if "assistant_message" in r:
@@ -267,7 +292,7 @@ async def websocket_endpoint(websocket: WebSocket):
                                             if 'message' in arguments_dict:
                                                 spoken_message = arguments_dict["message"]
                                                 print(f"Message from function call: {spoken_message}")
-                                                #break  # Ensure only one function call message is handled
+                                                break  # Ensure only one function call message is handled
                                         except (SyntaxError, ValueError) as e:
                                             print(f"Error parsing function call arguments: {e}")
                                     else:
@@ -279,8 +304,8 @@ async def websocket_endpoint(websocket: WebSocket):
 
                         if spoken_message:
                             await broadcast_message(spoken_message)
-                            say(spoken_message)
-                            #print(f"Broadcasted message: {spoken_message}")
+                            #say(spoken_message)
+                            print(f"Broadcasted message: {spoken_message}")
 
             except Exception as e:
                 print(f"Error processing message: {str(e)}")
@@ -307,7 +332,7 @@ async def broadcast_message(message: str):
     print(f"Attempting to broadcast message: {message}")
     for connection in active_connections:
         try:
-            print(f"Broadcasting message: {message}")
+            #print(f"Broadcasting message: {message}")
             await connection.send_json({"message": message})  # Proper JSON format
         except Exception as e:
             print(f"Error sending message to WebSocket: {e}")

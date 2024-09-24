@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, VStack, Text, HStack, Avatar } from '@chakra-ui/react';
+import { Box, VStack, Text, HStack, Avatar, useColorModeValue } from '@chakra-ui/react';
 import { Message } from '../types';
 import ReactMarkdown from 'react-markdown';
 import './ChatWindow.css';  // Import the CSS file
@@ -17,18 +17,24 @@ const getAvatarSrc = (role: string) => {
 };
 
 const ChatWindow: React.FC<ChatWindowProps> = ({ messages, messagesEndRef }) => {
+  const bgColor = useColorModeValue('gray.100', 'gray.800');
+  const textColor = useColorModeValue('gray.800', 'white');
+  const userBubbleColor = useColorModeValue('blue.500', 'blue.300');
+  const aiBubbleColor = useColorModeValue('gray.600', 'gray.700');
+  
   return (
     <VStack
       flex="1"
-      bg="gray.800"
+      bg={bgColor}
+      color={textColor}
       p={4}
       spacing={4}
       justify="flex-end"
-      align="center"  // Ensure the content is centered
+      align="center"
       maxHeight={{ base: '60vh', md: '80vh' }}
       overflowY="auto"
     >
-      <Box width="80%" overflowY="auto">  {/* Center the messages container and set it to 80% width */}
+      <Box width="80%" overflowY="auto">
         {messages.map((message, index) => (
           <HStack
             key={index}
@@ -43,7 +49,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ messages, messagesEndRef }) => 
             <VStack align="flex-start" spacing={1} maxWidth="fit-content">
               <HStack spacing={3}>
                 {/* Name and timestamp */}
-                <Text fontWeight="bold" color="white">{message.name}</Text>
+                <Text fontWeight="bold" color={textColor}>{message.name}</Text>
                 <Text fontSize="xs" color="gray.400">{message.timestamp}</Text>
               </HStack>
 
@@ -57,7 +63,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ messages, messagesEndRef }) => 
 
               {/* Regular message */}
               {message.type !== 'thought' && (
-                <Box color="white">
+                <Box className={`message-bubble ${message.role}`} p={3} borderRadius="lg">
                   <ReactMarkdown>{message.content}</ReactMarkdown>
                 </Box>
               )}

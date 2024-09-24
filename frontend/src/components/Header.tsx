@@ -1,7 +1,6 @@
-// components/Header.tsx
 import React from 'react';
-import { Box, HStack, IconButton, Image } from '@chakra-ui/react';
-import { FiLogOut } from 'react-icons/fi';
+import { Box, HStack, IconButton, Image, useColorMode, useColorModeValue } from '@chakra-ui/react';
+import { FiLogOut, FiSun, FiMoon } from 'react-icons/fi';
 
 const handleLogout = async () => {
   // Clear the token from localStorage
@@ -20,30 +19,48 @@ const handleLogout = async () => {
   }
 
   // Redirect to the login page
-  window.location.href = '/frontend';
+  window.location.href = '/';
 };
 
 const Header = () => {
+  const { colorMode, toggleColorMode } = useColorMode();
+
+  // Dynamic styling based on color mode (light or dark)
+  const bg = useColorModeValue('gray.100', 'gray.900');  // Light gray for light mode, dark gray for dark mode
+  const textColor = useColorModeValue('gray.800', 'white');  // Dark text in light mode, white text in dark mode
+  const hoverColor = useColorModeValue('gray.200', 'gray.700');  // Slightly lighter/darker for hover effects
+
   return (
-    <HStack justify="space-between" p={4} bg="gray.800" align="center">
-      
+    <HStack justify="space-between" p={4} bg={bg} align="center" boxShadow="md">
       {/* Logo on the left */}
-      <Image src="/img/logo.png" alt="Logo" boxSize="50px" /> {/* Adjust the boxSize as needed */}
+      <Image src="/img/logo.png" alt="Logo" boxSize="50px" />
 
       {/* Title in the middle */}
-      <Box fontWeight="bold" fontSize="xl" textAlign="center" flex="1">
+      <Box fontWeight="bold" fontSize="xl" textAlign="center" color={textColor} flex="1">
         J.A.R.V.I.S
       </Box>
+
+      {/* Toggle Theme Button */}
+      <IconButton
+        icon={colorMode === 'light' ? <FiMoon /> : <FiSun />}  // Toggle between sun and moon icons
+        aria-label="Toggle Theme"
+        onClick={toggleColorMode}
+        bg="transparent"
+        color={textColor}
+        _hover={{ bg: hoverColor }}  // Hover effect based on theme
+        transition="background-color 0.3s"
+      />
 
       {/* Logout Button on the far right */}
       <IconButton
         icon={<FiLogOut />}  // Use the logout icon
         aria-label="Logout"
         size="lg"
-        onClick={handleLogout}  // Use the logout function defined earlier
+        onClick={handleLogout}
         bg="red.500"
         color="white"
-        _hover={{ bg: 'red.400' }}
+        _hover={{ bg: 'red.400' }}  // Lighter red for hover effect
+        transition="background-color 0.3s"
       />
     </HStack>
   );

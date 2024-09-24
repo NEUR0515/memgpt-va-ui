@@ -17,7 +17,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     // Optionally verify the token with the backend to make sure it's still valid
     const verifyToken = async () => {
       try {
-        const response = await fetch(`http://localhost:8000/verify-token/${token}`);
+        const response = await fetch(`/verify-token/${token}`);
         if (!response.ok) {
           throw new Error('Token verification failed');
         }

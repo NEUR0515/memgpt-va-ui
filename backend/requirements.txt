@@ -3,7 +3,7 @@ SpeechRecognition
 python-dotenv
 openai
 pygame
-PyAudio
+#PyAudio
 google-api-python-client
 google-auth-httplib2
 google-auth-oauthlib

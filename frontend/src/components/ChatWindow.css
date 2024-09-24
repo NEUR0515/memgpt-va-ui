@@ -9,6 +9,8 @@
   width: fit-content; /* Only takes the space it needs */
   word-wrap: break-word;
   overflow-wrap: break-word; /* Ensure long words break properly */
+  transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1); /* Add a soft shadow for depth */
 }
 
 /* User messages align right */
@@ -16,7 +18,8 @@
   justify-content: flex-end;
   background-color: #4a90e2;
   margin-left: auto;
-  max-width: 60%; /* Prevents message from expanding too wide */
+  max-width: 60%;
+  box-shadow: 0px 2px 5px rgba(0, 0, 255, 0.1); /* Subtle blue shadow for user messages */
 }
 
 /* AI messages align left */
@@ -24,15 +27,17 @@
   justify-content: flex-start;
   background-color: #2c2f33;
   margin-right: auto;
-  max-width: 60%; /* Prevents message from expanding too wide */
+  max-width: 60%;
+  box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2); /* Slightly stronger shadow for AI messages */
 }
 
 /* Thought messages styling */
 .chat-message.thought-message {
-  background-color: rgba(245, 212, 66, 0.1);
+  background-color: #666666;
   font-style: italic;
   border-left: 4px solid #f5d442;
   padding-left: 10px;
+  color: #666666; /* Darker color for better readability in light mode */
 }
 
 /* Avatar styling */
@@ -61,10 +66,22 @@
   }
 }
 
+/* Message bubble hover effects for subtle interactivity */
+.chat-message:hover {
+  filter: brightness(1.1);
+}
+
+/* Thought icon styling */
+.thought-icon {
+  color: #f5d442;
+  margin-right: 5px;
+}
+
+/* Chat container */
 .chat-container {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  height: auto;
   overflow-y: auto;
 }
 
@@ -72,4 +89,31 @@
 .chat-container > div {
   width: 80%;  /* Limit the container width to 80% */
   margin: 0 auto; /* Center it horizontally */
+}
+
+/* Added smooth transition to handle theme switching */
+.chat-message {
+  transition: background-color 0.3s, color 0.3s ease;
+}
+
+/* Clear Messages button styling */
+button.clear-messages {
+  background-color: #e53e3e; /* Chakra's red.500 */
+  color: white;
+  border-radius: 8px;
+  padding: 0.5em 1em;
+  transition: background-color 0.3s ease;
+}
+
+button.clear-messages:hover {
+  background-color: #c53030; /* Chakra's red.400 */
+  transition: background-color 0.3s ease;
+}
+
+/* Transcription box styling */
+.transcription-box {
+  text-align: center;
+  font-style: italic;
+  margin-top: 20px; /* Add some margin for better spacing */
+  color: #888888;
 }

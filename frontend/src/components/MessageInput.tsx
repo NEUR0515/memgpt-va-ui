@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { HStack, IconButton, CircularProgress, CircularProgressLabel, Textarea, Box, Flex, Button } from '@chakra-ui/react';
+import { HStack, IconButton, CircularProgress, CircularProgressLabel, Textarea, Box, Flex, Button, useColorModeValue } from '@chakra-ui/react';
 import { ArrowUpIcon, AttachmentIcon, CalendarIcon } from '@chakra-ui/icons';
 import { FiMic } from 'react-icons/fi';
 
@@ -23,11 +23,13 @@ const MessageInput: React.FC<MessageInputProps> = ({
   toggleRightPanel
 }) => {
   const [editorContent, setEditorContent] = useState('');
+  
   // Function to handle clearing messages
   const handleClearMessages = (setMessages: React.Dispatch<React.SetStateAction<any[]>>) => {
     setMessages([]);  // Clear messages from UI
     localStorage.removeItem("chatMessages");  // Clear messages from localStorage
   };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault(); // Prevent the default behavior of creating a new line
@@ -36,38 +38,50 @@ const MessageInput: React.FC<MessageInputProps> = ({
     }
   };
 
+  // Define colors for light/dark mode
+  const bgColor = useColorModeValue('gray.100', 'gray.800');
+  const textColor = useColorModeValue('gray.800', 'white');
+  const buttonBgColor = useColorModeValue('gray.600', 'gray.600');
+  const buttonHoverColor = useColorModeValue('gray.500', 'gray.500');
+  const sendButtonColor = useColorModeValue('blue.500', 'blue.400');
+  
   return (
     <Flex
       width="100%"
       justify="center"
       align="center"
       p={4}
-      bg="gray.900"
+      bg={bgColor}
+      color={textColor}
+      borderTop="1px solid"  // Adds a border to separate the input from the chat window
+      borderColor={useColorModeValue('gray.200', 'gray.700')}
     >
       <Flex
         width={{ base: '100%', md: '50%' }}  // Full width on mobile, 50% on larger screens
         align="center"
-        justify="space-between"  // Spread the icons and the text area evenly
+        justify="space-between"
       >
         {/* Left Sidebar Toggle Button */}
         <IconButton
           icon={<AttachmentIcon />}
           aria-label="Toggle File Preview"
           size="lg"
-          bg="gray.600"
+          bg={buttonBgColor}
           color="white"
           borderRadius="full"  // Make the button round
-          _hover={{ bg: 'gray.500' }}
-          w="50px"  // Fixed width for uniform size
-          h="50px"  // Fixed height for uniform size
-          onClick={toggleLeftPanel} // Call the prop function to toggle the left panel
+          _hover={{ bg: buttonHoverColor }}
+          w="50px"
+          h="50px"
+          onClick={toggleLeftPanel}  // Call the prop function to toggle the left panel
         />
+
         {/* Clear Messages Button */}
         <Flex justify="center" p={4}>
           <Button colorScheme="red" onClick={() => handleClearMessages(setMessages)}>
             Clear Messages
           </Button>
         </Flex>
+
         {/* Textarea in the center */}
         <Box flex="1" mx={4}>
           <Textarea
@@ -76,6 +90,8 @@ const MessageInput: React.FC<MessageInputProps> = ({
             onChange={(e) => setEditorContent(e.target.value)}
             placeholder="Type your message here..."
             onKeyDown={handleKeyDown}  // Handle key presses
+            borderColor={useColorModeValue('gray.300', 'gray.600')}  // Add a border to the textarea
+            _focus={{ borderColor: 'blue.500', outline: 'none' }}  // Focus state for better accessibility
           />
         </Box>
 
@@ -84,12 +100,12 @@ const MessageInput: React.FC<MessageInputProps> = ({
           icon={<ArrowUpIcon />}
           aria-label="Send Message"
           size="lg"
-          bg="blue.500"
+          bg={sendButtonColor}
           color="white"
-          borderRadius="full"  // Make the button round
+          borderRadius="full"
           _hover={{ bg: 'blue.400' }}
-          w="50px"  // Fixed width for uniform size
-          h="50px"  // Fixed height for uniform size
+          w="50px"
+          h="50px"
           onClick={() => {
             onSendMessage(editorContent);
             setEditorContent('');  // Clear the input after sending the message
@@ -97,33 +113,42 @@ const MessageInput: React.FC<MessageInputProps> = ({
         />
 
         {/* Mic icon with progress */}
-        <CircularProgress value={audioLevel} size="60px" thickness="4px" color="blue.500">
-          <CircularProgressLabel>
-            <IconButton
-              aria-label="Microphone"
-              size="lg"
-              isRound
-              icon={<FiMic />}
-              w="50px"  // Fixed width for uniform size
-              h="50px"  // Fixed height for uniform size
-              onClick={toggleListening}
-              color={isListening ? 'red.500' : 'white'}
-            />
-          </CircularProgressLabel>
-        </CircularProgress>
+        <Box position="relative">
+          <CircularProgress 
+            value={audioLevel} 
+            size="60px" 
+            thickness="4px" 
+            color="blue.500"
+          >
+            <CircularProgressLabel>
+              <IconButton
+                aria-label="Microphone"
+                size="lg"
+                isRound
+                icon={<FiMic />}
+                w="50px"  // Fixed width for uniform size
+                h="50px"  // Fixed height for uniform size
+                onClick={toggleListening}
+                color={isListening ? 'red.500' : 'gray.600'}
+                bg={isListening ? 'gray.100' : 'gray.200'}  // Background color to make it stand out
+                _hover={{ bg: isListening ? 'gray.200' : 'gray.300' }}  // Add hover effect
+              />
+            </CircularProgressLabel>
+          </CircularProgress>
+        </Box>
 
         {/* Right Sidebar Toggle Button */}
         <IconButton
           icon={<CalendarIcon />}
           aria-label="Toggle Right Sidebar"
           size="lg"
-          bg="gray.600"
+          bg={buttonBgColor}
           color="white"
-          borderRadius="full"  // Make the button round
-          _hover={{ bg: 'gray.500' }}
-          w="50px"  // Fixed width for uniform size
-          h="50px"  // Fixed height for uniform size
-          onClick={toggleRightPanel} // Call the prop function to toggle the right panel
+          borderRadius="full"
+          _hover={{ bg: buttonHoverColor }}
+          w="50px"
+          h="50px"
+          onClick={toggleRightPanel}  // Call the prop function to toggle the right panel
         />
       </Flex>
     </Flex>
