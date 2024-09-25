@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Box, Input, Button, VStack, FormControl, FormLabel, Heading, Text, Alert, AlertIcon, Spinner, Image } from '@chakra-ui/react';
-import { useNavigate } from 'react-router-dom';
+import { Box, Input, Button, VStack, FormControl, FormLabel, Heading, Alert, AlertIcon, Spinner, Text } from '@chakra-ui/react';
+import { Link, useNavigate } from 'react-router-dom';
 
 const Register: React.FC = () => {
   const [firstName, setFirstName] = useState('');
@@ -171,6 +171,15 @@ const Register: React.FC = () => {
             </Button>
           </VStack>
         </form>
+        {error && <Text color="red.500" mt={4}>{error}</Text>}
+        <Text mt={4} color="gray.300">
+          Already Registered?{' '}
+          <Link to="/login">
+            <Text as="span" color="blue.400" fontWeight="bold">
+              Login
+            </Text>
+          </Link>
+        </Text>
       </Box>
     </Box>
   );

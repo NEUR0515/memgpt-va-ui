@@ -22,6 +22,7 @@ This is J.A.R.V.I.S, a personal AI assistant designed to handle various tasks in
 - File data can be uploaded straight into Archival Memory using the UI.
 - MemGPT Data Source connections to chat with your data.
 - List upcoming events and create new ones in Google Calendar.
+- HTTPS and WSS supported
 
 ## Technologies Used
 
@@ -90,14 +91,14 @@ uvicorn main:app --host 0.0.0.0 --port 8000
 
 The React frontend is hosted statically through the backend. You can access it by navigating to:
 
-http://localhost:8000/frontend
+http://localhost:8000/
 
 No need to run npm start, as the frontend files are served directly by FastAPI.
 
 Running on Other Devices
 To access the application on another device within your network, ensure your host machine's IP address is reachable, and navigate to:
 
-http://your-ip-address:8000/frontend
+http://your-ip-address:8000/
 
 ### Using the Application
 
