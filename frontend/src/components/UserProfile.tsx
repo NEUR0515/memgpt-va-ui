@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Input, Button, VStack, FormControl, FormLabel, Heading, Text, Alert, AlertIcon, Spinner, Image } from '@chakra-ui/react';
 
+/**
+ * UserProfile component for displaying and updating user profile information
+ * @returns {JSX.Element} A form for viewing and editing user profile details
+ */
 const UserProfile: React.FC = () => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -8,6 +12,11 @@ const UserProfile: React.FC = () => {
   const [profilePicture, setProfilePicture] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  /**
+   * Fetches and sets the current user's profile data
+   * @param {void} No parameters
+   * @returns {void} No return value, but updates state variables with user data
+   */
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
@@ -38,6 +47,10 @@ const UserProfile: React.FC = () => {
     fetchUserData();
   }, []);
 
+  /**
+   * Validates the form inputs for user registration or profile update
+   * @returns {boolean} True if the form is valid, false otherwise
+   */
   const validateForm = () => {
     if (!firstName || !lastName || !email) {
       setError('First name, last name, and email are required');
@@ -47,6 +60,11 @@ const UserProfile: React.FC = () => {
       setError('Passwords do not match');
       return false;
     }
+    /**
+     * Handles the profile update process when the form is submitted.
+     * @param {React.FormEvent} event - The form submission event.
+     * @returns {Promise<void>} Nothing is returned, but the function updates the component state based on the API response.
+     */
     setError('');
     return true;
   };
@@ -117,6 +135,11 @@ const UserProfile: React.FC = () => {
               <FormLabel color="gray.300">First Name</FormLabel>
               <Input
                 value={firstName}
+                /**
+                 * Updates the firstName state with the input value
+                 * @param {React.ChangeEvent<HTMLInputElement>} e - The change event from the input field
+                 * @returns {void} This function doesn't return a value
+                 */
                 onChange={(e) => setFirstName(e.target.value)}
                 placeholder="Enter your first name"
                 bg="gray.600"
@@ -129,6 +152,11 @@ const UserProfile: React.FC = () => {
               <FormLabel color="gray.300">Last Name</FormLabel>
               <Input
                 value={lastName}
+                /**
+                 * Handles the change event for the last name input field
+                 * @param {React.ChangeEvent<HTMLInputElement>} e - The change event object
+                 * @returns {void} This function doesn't return a value
+                 */
                 onChange={(e) => setLastName(e.target.value)}
                 placeholder="Enter your last name"
                 bg="gray.600"
@@ -142,6 +170,11 @@ const UserProfile: React.FC = () => {
               <Input
                 type="email"
                 value={email}
+                /**
+                 * Event handler for email input change
+                 * @param {React.ChangeEvent<HTMLInputElement>} e - The change event object
+                 * @returns {void} This function doesn't return a value
+                 */
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your email address"
                 bg="gray.600"
@@ -154,6 +187,11 @@ const UserProfile: React.FC = () => {
               <FormLabel color="gray.300">Profile Picture (URL)</FormLabel>
               <Input
                 value={profilePicture}
+                /**
+                 * Handles the change event for the profile picture input
+                 * @param {React.ChangeEvent<HTMLInputElement>} e - The change event object
+                 * @returns {void} This function doesn't return a value
+                 */
                 onChange={(e) => setProfilePicture(e.target.value)}
                 placeholder="Enter your profile picture URL"
                 bg="gray.600"
@@ -167,6 +205,11 @@ const UserProfile: React.FC = () => {
               <Input
                 type="password"
                 value={password}
+                /**
+                 * Event handler for password input change
+                 * @param {React.ChangeEvent<HTMLInputElement>} e - The change event object
+                 * @returns {void} This function does not return a value
+                 */
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter new password"
                 bg="gray.600"
@@ -175,6 +218,11 @@ const UserProfile: React.FC = () => {
               />
             </FormControl>
 
+            /**
+             * Event handler for updating the confirm password state
+             * @param {React.ChangeEvent<HTMLInputElement>} e - The change event object
+             * @returns {void} This function does not return a value
+             */
             <FormControl id="confirmPassword">
               <FormLabel color="gray.300">Confirm Password</FormLabel>
               <Input
