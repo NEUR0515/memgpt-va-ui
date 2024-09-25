@@ -259,6 +259,7 @@ function Jarvis() {
     if (finalTranscription) {
       handleSendMessage(finalTranscription);
       setTranscription(''); // Clear transcription
+      setIsListening(false);  // Stop listening
     }
   };
 

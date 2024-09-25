@@ -193,20 +193,20 @@ async def get_user_info(token: str = Depends(oauth2_scheme)):
 def serve_frontend():
     index_file_path = "../frontend/build/index.html"
     if os.path.exists(index_file_path):
-        print(f"Serving frontend from {index_file_path}")
+        #print(f"Serving frontend from {index_file_path}")
         return FileResponse(index_file_path)
     else:
-        print(f"index.html not found at {index_file_path}")
+        #print(f"index.html not found at {index_file_path}")
         return {"error": "index.html not found"}
 
 @app.get("/")
 def serve_frontend():
     index_file_path = "../frontend/build/index.html"
     if os.path.exists(index_file_path):
-        print(f"Serving frontend from {index_file_path}")
+        #print(f"Serving frontend from {index_file_path}")
         return FileResponse(index_file_path)
     else:
-        print(f"index.html not found at {index_file_path}")
+        #print(f"index.html not found at {index_file_path}")
         return {"error": "index.html not found"}
 
 @app.websocket("/ws")
@@ -241,14 +241,14 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(None)):
                 data = await websocket.receive_text()
                 message = json.loads(data)
 
-                print(f"Received message: {message.get('message')}")
+                #print(f"Received message: {message.get('message')}")
 
             except WebSocketDisconnect:
                 print(f"WebSocket disconnected by {username}.")
                 break
 
             try:
-                command = message.get('message', '').lower()
+                command = message.get('message', '')
                 print(f"Processing command: {command}")
 
                 if command:
@@ -265,7 +265,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(None)):
                                 "type": "thought",
                                 "message": thought_message
                             })
-                            print(f"Sent thought message: {thought_message}")
+                            #print(f"Sent thought message: {thought_message}")
 
                         assistant_message = None
                         if response.messages:
@@ -277,7 +277,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(None)):
                         if assistant_message:
                             await broadcast_message(assistant_message)
                             say(assistant_message)
-                            print(f"Broadcasted message: {assistant_message}")
+                            #print(f"Broadcasted message: {assistant_message}")
 
             except Exception as e:
                 print(f"Error processing message: {str(e)}")
@@ -298,7 +298,7 @@ async def broadcast_log(log: str):
             print(f"Error broadcasting log: {e}")
 
 async def broadcast_message(message: str):
-    print(f"Attempting to broadcast message: {message}")
+    #print(f"Attempting to broadcast message: {message}")
     for connection in active_connections:
         try:
             #print(f"Broadcasting message: {message}")
