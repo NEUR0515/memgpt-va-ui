@@ -1,9 +1,5 @@
 import React, { useState, useEffect } from 'react';
 
-/**
- * Renders a task section component that displays a list of tasks and provides functionality to add new tasks.
- * @returns {JSX.Element} A React component that shows a list of tasks or loading/empty state messages.
- */
 const TaskSection = () => {
   // Explicitly type tasks as an array of strings
   const [tasks, setTasks] = useState<string[]>([]); 
@@ -12,10 +8,6 @@ const TaskSection = () => {
 
   // Fetch tasks from the backend
   useEffect(() => {
-    /**
-     * Fetches tasks from the API and updates the component state
-     * @returns {Promise<void>} A promise that resolves when the tasks are fetched and state is updated
-     */
     const fetchTasks = async () => {
       try {
         const response = await fetch('/api/tasks');
@@ -27,13 +19,7 @@ const TaskSection = () => {
         setLoading(false);
       }
     };
-```
-/**
- * Handles the addition of a new task by sending a POST request to the server and updating the UI.
- * @param {void} - This function doesn't take any parameters.
- * @returns {Promise<void>} A promise that resolves when the task is added successfully or rejects if there's an error.
- */
-```
+
     fetchTasks();
   }, []);
 
@@ -65,14 +51,7 @@ const TaskSection = () => {
     <div>
       <h2>Tasks</h2>
       <ul>
-        ```
-        /**
-         * Renders a list of tasks using map function
-         * @param {Array} tasks - An array of task items to be displayed
-         * @returns {Array} An array of list item elements, each containing a task
-         */
-        
-        ```        {tasks.map((task, index) => (
+        {tasks.map((task, index) => (
           <li key={index}>{task}</li>
         ))}
       </ul>

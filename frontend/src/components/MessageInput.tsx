@@ -13,17 +13,6 @@ interface MessageInputProps {
   toggleRightPanel: () => void;  // Prop for toggling the right panel
 }
 
-/**
- * A React functional component that renders a message input area with various controls.
- * @param {React.Dispatch<React.SetStateAction<any[]>>} setMessages - Function to update the messages state.
- * @param {(message: string) => void} onSendMessage - Function to handle sending a message.
- * @param {number} audioLevel - The current audio level for the microphone.
- * @param {boolean} isListening - Indicates whether the microphone is currently listening.
- * @param {() => void} toggleListening - Function to toggle the listening state of the microphone.
- * @param {() => void} toggleLeftPanel - Function to toggle the left panel visibility.
- * @param {() => void} toggleRightPanel - Function to toggle the right panel visibility.
- * @returns {JSX.Element} A flex container with textarea, buttons, and icons for message input and controls.
- */
 const MessageInput: React.FC<MessageInputProps> = ({
   setMessages,
   onSendMessage,
@@ -41,11 +30,6 @@ const MessageInput: React.FC<MessageInputProps> = ({
     localStorage.removeItem("chatMessages");  // Clear messages from localStorage
   };
 
-  /**
-   * Handles the keydown event for the textarea, specifically for sending messages on Enter key press.
-   * @param {React.KeyboardEvent<HTMLTextAreaElement>} e - The keyboard event object.
-   * @returns {void} This function doesn't return anything.
-   */
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault(); // Prevent the default behavior of creating a new line
@@ -100,11 +84,6 @@ const MessageInput: React.FC<MessageInputProps> = ({
         {/* Clear Messages Button (Hidden on Mobile) */}
         {showOtherButtons && (
           <Flex justify="center" p={4}>
-            /**
-             * Renders a red-colored button that clears messages when clicked
-             * @param {function} setMessages - State setter function to update messages
-             * @returns {JSX.Element} A Button component with click handler to clear messages
-             */
             <Button colorScheme="red" onClick={() => handleClearMessages(setMessages)}>
               Clear Messages
             </Button>
@@ -116,11 +95,6 @@ const MessageInput: React.FC<MessageInputProps> = ({
           <Textarea
             width="100%"  // Takes full width within its container
             value={editorContent}
-            /**
-             * Handles the change event for the editor content
-             * @param {React.ChangeEvent<HTMLTextAreaElement>} e - The change event object
-             * @returns {void} This function does not return a value
-             */
             onChange={(e) => setEditorContent(e.target.value)}
             placeholder="Type your message here..."
             onKeyDown={handleKeyDown}  // Handle key presses
