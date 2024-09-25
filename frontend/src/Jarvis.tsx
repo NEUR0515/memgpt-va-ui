@@ -99,7 +99,9 @@ function Jarvis() {
   }, []);  // Run once when the component mounts
   useEffect(() => {
     const token = localStorage.getItem("token");  // Get the token from localStorage or wherever it's stored
-    const webSocket = new WebSocket(`${process.env.REACT_APP_WS_URL}?token=${token}`);
+    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    // const webSocket = new WebSocket(`${process.env.REACT_APP_WS_URL}?token=${token}`);
+    const webSocket = new WebSocket(`${protocol}://${window.location.host}/ws?token=${token}`);
     setWs(webSocket);
   
     webSocket.onopen = () => {
