@@ -20,8 +20,6 @@ const getAvatarSrc = (role: string) => {
 const ChatWindow: React.FC<ChatWindowProps> = ({ messages, messagesEndRef, username }) => {  // Add username to props
   const bgColor = useColorModeValue('gray.100', 'gray.800');
   const textColor = useColorModeValue('gray.800', 'white');
-  const userBubbleColor = useColorModeValue('blue.500', 'blue.300');
-  const aiBubbleColor = useColorModeValue('gray.600', 'gray.700');
   
   return (
     <VStack

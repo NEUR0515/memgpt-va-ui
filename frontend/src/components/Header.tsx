@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Box, HStack, IconButton, Image, useColorMode, useColorModeValue, Text } from '@chakra-ui/react';
+import { Box, HStack, IconButton, Image, useColorMode, useColorModeValue, Text, Avatar, Menu, MenuButton, MenuList, MenuItem } from '@chakra-ui/react';
 import { FiLogOut, FiSun, FiMoon } from 'react-icons/fi';
+import { useNavigate } from 'react-router-dom';
 
 const handleLogout = async () => {
   // Clear the token from localStorage
@@ -25,6 +26,8 @@ const handleLogout = async () => {
 const Header = () => {
   const { colorMode, toggleColorMode } = useColorMode();
   const [username, setUsername] = useState('');
+  const [profilePicture, setProfilePicture] = useState('/img/default-avatar.png');  // Default avatar
+  const navigate = useNavigate();  // Navigation hook to redirect
 
   useEffect(() => {
     const fetchUsername = async () => {
@@ -52,6 +55,7 @@ const Header = () => {
         
         const data = await response.json();
         setUsername(data.username);
+        setProfilePicture(data.profile_picture || '/img/default-avatar.png');  // Set profile picture or fallback to default
       } catch (error) {
         console.error('Error fetching username:', error);
       }
@@ -91,17 +95,16 @@ const Header = () => {
         transition="background-color 0.3s"
       />
 
-      {/* Logout Button on the far right */}
-      <IconButton
-        icon={<FiLogOut />}  // Use the logout icon
-        aria-label="Logout"
-        size="md"
-        onClick={handleLogout}
-        bg="red.500"
-        color="white"
-        _hover={{ bg: 'red.400' }}  // Lighter red for hover effect
-        transition="background-color 0.3s"
-      />
+      {/* Profile Icon Menu */}
+      <Menu>
+        <MenuButton>
+          <Avatar size="md" name={username} src={profilePicture} cursor="pointer" />
+        </MenuButton>
+        <MenuList>
+          <MenuItem onClick={() => navigate('/profile')}>My Profile</MenuItem>
+          <MenuItem onClick={handleLogout}>Logout</MenuItem>
+        </MenuList>
+      </Menu>
     </HStack>
   );
 };

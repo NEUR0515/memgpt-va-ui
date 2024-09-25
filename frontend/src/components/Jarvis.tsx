@@ -1,13 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Flex, Box, useDisclosure, useColorModeValue } from '@chakra-ui/react';
-import Header from './components/Header';
-import FileUploader from './components/FileUploader';
-import ChatWindow from './components/ChatWindow';
-import MessageInput from './components/MessageInput';
-import LiveTranscription from './components/LiveTranscription';
-import CalendarSection from './components/CalendarSection';  
-import TaskManager from './components/TaskManager';
-import { Message } from './types';
+import Header from './Header';
+import FileUploader from './FileUploader';
+import ChatWindow from './ChatWindow';
+import MessageInput from './MessageInput';
+import LiveTranscription from './LiveTranscription';
+import CalendarSection from './CalendarSection';  
+import TaskManager from './TaskManager';
+import { Message } from '../types';
 import sanitizeHtml from 'sanitize-html';
 
 // Declare the types for SpeechRecognition
@@ -184,7 +184,7 @@ function Jarvis() {
 
       // Only play the TTS if the message is new and different from the last played one
       // Also, do not play TTS for messages loaded from localStorage (isPageReloaded === false)
-      if (data.message !== lastPlayedMessage) {
+      if (!isPageReloaded && data.message !== lastPlayedMessage) {
         playTTSResponse();
         setLastPlayedMessage(data.message);  // Update the last played message
       }

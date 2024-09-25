@@ -1,4 +1,5 @@
 import json
+import logging
 from os.path import join, dirname, exists
 import ast
 import re
@@ -17,6 +18,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 import os
 import pytz
+from typing import Optional
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
@@ -24,7 +26,7 @@ from datetime import datetime, timedelta, timezone
 from passlib.context import CryptContext
 from models import User
 from database import SessionLocal, engine
-from pydantic import BaseModel
+from pydantic import BaseModel, HttpUrl
 from fastapi.middleware.cors import CORSMiddleware
 from logout_router import router as auth_router
 dotenv_path = join(dirname(__file__), '.env')
@@ -108,22 +110,47 @@ client.attach_source_to_agent(source_state.id, agent_id=agent_state.id)
 # Store active WebSocket connections
 active_connections = set()
 
-class UserCreate(BaseModel):
+class UserProfile(BaseModel):
     username: str
     password: str
+    first_name: str
+    last_name: str
+    email: str
+    profile_picture: Optional[HttpUrl] = None  # Now this field is optional
+
+# Model for returning user profile data (output model)
+class UserProfileResponse(BaseModel):
+    first_name: str
+    last_name: str
+    email: str
+    profile_picture: Optional[HttpUrl] = None  # Now this field is optional
+    
+class UserProfileUpdate(BaseModel):
+    first_name: str
+    last_name: str
+    email: str
+    profile_picture: Optional[HttpUrl] = None  # Make profile picture optional
+    password: Optional[str] = None  # Password is optional for updating
 
 def get_user_by_username(db: Session, username: str):
     return db.query(User).filter(User.username == username).first()
 
-def create_user(db: Session, user: UserCreate):
+def create_user(db: Session, user: UserProfile):
     hashed_password = pwd_context.hash(user.password)
-    db_user = User(username=user.username, hashed_password=hashed_password)
+    db_user = User(
+        username=user.username,
+        hashed_password=hashed_password,
+        first_name=user.first_name,
+        last_name=user.last_name,
+        email=user.email,
+        profile_picture=str(user.profile_picture) if user.profile_picture else None  # Convert to string if not None
+    )
     db.add(db_user)
     db.commit()
-    return "complete"
+    return f"User {user.username} created successfully."
 
 @app.post("/register")
-def register_user(user: UserCreate, db: Session = Depends(get_db)):
+def register_user(user: UserProfile, db: Session = Depends(get_db)):
     db_user = get_user_by_username(db, username=user.username)
     if db_user:
         raise HTTPException(status_code=400, detail="Username already registered")
@@ -184,6 +211,59 @@ async def verify_user_token(token: str):
         return {"message": "Token is valid"}
     except JWTError:
         raise HTTPException(status_code=403, detail="Token is invalid or expired")
+
+# Ensure that the token is validated (use your own verify_token function or equivalent)
+def get_current_user(db: Session, token: str):
+    payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    username: str = payload.get("sub")
+    if username is None:
+        raise HTTPException(status_code=403, detail="Token is invalid or expired")
+    
+    user = db.query(User).filter(User.username == username).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return user
+
+# Route to get user profile
+@app.get("/api/user-profile", response_model=UserProfileResponse)
+def get_user_profile(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    user = get_current_user(db, token)
+    return {
+        "username": user.username,  # Ensure this is included
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "email": user.email,
+        "profile_picture": user.profile_picture,
+        # Do not return password for security reasons
+    }
+@app.put("/api/user-profile", response_model=UserProfileResponse)
+def update_user_profile(profile_data: UserProfileUpdate, token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    #logging.info(f"Received profile data: {profile_data}")
+    user = get_current_user(db, token)
+
+    # Update user fields
+    user.first_name = profile_data.first_name
+    user.last_name = profile_data.last_name
+    user.email = profile_data.email
+
+    # Convert HttpUrl to string before saving to the database
+    user.profile_picture = str(profile_data.profile_picture) if profile_data.profile_picture else None
+
+    # Update password if provided
+    if profile_data.password:  
+        hashed_password = pwd_context.hash(profile_data.password)
+        user.hashed_password = hashed_password
+
+    db.commit()
+
+    # Return the updated user profile (without the password)
+    return {
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "email": user.email,
+        "profile_picture": user.profile_picture
+    }
 
 @app.get("/api/user-info")
 async def get_user_info(token: str = Depends(oauth2_scheme)):
@@ -249,7 +329,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(None)):
 
             try:
                 command = message.get('message', '')
-                print(f"Processing command: {command}")
+                #print(f"Processing command: {command}")
 
                 if command:
                     if "exit" in command or "stop" in command:

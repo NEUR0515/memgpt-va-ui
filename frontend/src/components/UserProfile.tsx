@@ -1,0 +1,201 @@
+import React, { useState, useEffect } from 'react';
+import { Box, Input, Button, VStack, FormControl, FormLabel, Heading, Text, Alert, AlertIcon, Spinner, Image } from '@chakra-ui/react';
+
+const UserProfile: React.FC = () => {
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [profilePicture, setProfilePicture] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    // Fetch the current user details (You need to have an API endpoint for fetching user data)
+    const fetchUserData = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        const response = await fetch('/api/user-profile', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const data = await response.json();
+        setFirstName(data.first_name);
+        setLastName(data.last_name);
+        setEmail(data.email);
+        setProfilePicture(data.profile_picture);
+      } catch (error) {
+        console.error('Failed to load user data:', error);
+      }
+    };
+
+    fetchUserData();
+  }, []);
+
+  const validateForm = () => {
+    if (!firstName || !lastName || !email) {
+      setError('First name, last name, and email are required');
+      return false;
+    }
+    if (password && password !== confirmPassword) {
+      setError('Passwords do not match');
+      return false;
+    }
+    setError('');
+    return true;
+  };
+
+  const handleUpdateProfile = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!validateForm()) return;
+    setLoading(true);
+
+    const updatedUserDetails = {
+      first_name: firstName,
+      last_name: lastName,
+      email: email,
+      profile_picture: profilePicture,
+      ...(password ? { password } : {}), // Only include password if it's filled
+    };
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/user-profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(updatedUserDetails),
+      });
+
+      setLoading(false);
+
+      if (response.ok) {
+        setSuccess('Profile updated successfully!');
+      } else {
+        const errorData = await response.json();
+        setError(errorData.detail || 'Profile update failed');
+      }
+    } catch (error) {
+      setLoading(false);
+      setError('An error occurred. Please try again later.');
+    }
+  };
+
+  return (
+    <Box height="100vh" display="flex" alignItems="center" justifyContent="center" bg="gray.900">
+      <Box width="400px" p={6} bg="gray.700" borderRadius="md" boxShadow="lg">
+        <Box display="flex" justifyContent="center" mb={4}>
+          <Image src={profilePicture || '/img/default-avatar.png'} alt="Profile Picture" boxSize="100px" borderRadius="full" />
+        </Box>
+
+        <Heading mb={6} color="white" textAlign="center">My Profile</Heading>
+
+        {error && (
+          <Alert status="error" mb={4}>
+            <AlertIcon />
+            {error}
+          </Alert>
+        )}
+        {success && (
+          <Alert status="success" mb={4}>
+            <AlertIcon />
+            {success}
+          </Alert>
+        )}
+
+        <form onSubmit={handleUpdateProfile}>
+          <VStack spacing={4}>
+            <FormControl id="firstName">
+              <FormLabel color="gray.300">First Name</FormLabel>
+              <Input
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder="Enter your first name"
+                bg="gray.600"
+                color="white"
+                focusBorderColor="blue.500"
+              />
+            </FormControl>
+
+            <FormControl id="lastName">
+              <FormLabel color="gray.300">Last Name</FormLabel>
+              <Input
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                placeholder="Enter your last name"
+                bg="gray.600"
+                color="white"
+                focusBorderColor="blue.500"
+              />
+            </FormControl>
+
+            <FormControl id="email">
+              <FormLabel color="gray.300">Email Address</FormLabel>
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your email address"
+                bg="gray.600"
+                color="white"
+                focusBorderColor="blue.500"
+              />
+            </FormControl>
+
+            <FormControl id="profilePicture">
+              <FormLabel color="gray.300">Profile Picture (URL)</FormLabel>
+              <Input
+                value={profilePicture}
+                onChange={(e) => setProfilePicture(e.target.value)}
+                placeholder="Enter your profile picture URL"
+                bg="gray.600"
+                color="white"
+                focusBorderColor="blue.500"
+              />
+            </FormControl>
+
+            <FormControl id="password">
+              <FormLabel color="gray.300">New Password (optional)</FormLabel>
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter new password"
+                bg="gray.600"
+                color="white"
+                focusBorderColor="blue.500"
+              />
+            </FormControl>
+
+            <FormControl id="confirmPassword">
+              <FormLabel color="gray.300">Confirm Password</FormLabel>
+              <Input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm new password"
+                bg="gray.600"
+                color="white"
+                focusBorderColor="blue.500"
+              />
+            </FormControl>
+
+            <Button type="submit" colorScheme="blue" width="full" disabled={loading}>
+              {loading ? <Spinner size="sm" /> : 'Update Profile'}
+            </Button>
+          </VStack>
+        </form>
+      </Box>
+    </Box>
+  );
+};
+
+export default UserProfile;
