@@ -30,10 +30,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ messages, messagesEndRef, usern
       spacing={4}
       justify="flex-end"
       align="center"
-      maxHeight={{ base: '60vh', md: '80vh' }}
-      overflowY="auto"
+      height="100%"  // Ensure the VStack takes up full height
     >
-      <Box width="80%" overflowY="auto">
+      <Box width="80%" overflowY="auto" height="100%"> {/* Only set scroll on this Box */}
         {messages.map((message, index) => (
           <HStack
             key={index}
@@ -57,7 +56,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ messages, messagesEndRef, usern
               {/* Thought message icon */}
               {message.type === 'thought' && (
                 <HStack spacing={1}>
-                  <Box as="span" className="thought-icon">💡</Box>
+                  <Box as="span" className="thought-icon">💭</Box>
                   <Text fontStyle="italic" color="gray.300">{message.content}</Text>
                 </HStack>
               )}
@@ -71,7 +70,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ messages, messagesEndRef, usern
             </VStack>
           </HStack>
         ))}
-        <div ref={messagesEndRef}></div>
+        <div ref={messagesEndRef}></div> {/* Ensure this is at the end of the messages */}
       </Box>
     </VStack>
   );

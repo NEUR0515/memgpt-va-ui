@@ -1,6 +1,4 @@
-from os.path import join, dirname, exists
-import os
-import json
+from os.path import join, dirname
 from typing import Optional, List
 from memgpt import create_client
 from memgpt.memory import ChatMemory, MemoryModule
@@ -12,8 +10,8 @@ from functions.list_upcoming_events import list_upcoming_events
 from functions.git_repo import create_git_repo
 from functions.file_functions import read_file, write_file
 from functions.threat_newsletter import fetch_security_news, send_security_newsletter
+from functions.website_crawler import analyse_website
 from dotenv import load_dotenv
-from googleapiclient.discovery import Resource
 
 dotenv_path = join(dirname(__file__), '.env')
 load_dotenv(dotenv_path)
@@ -63,6 +61,7 @@ list_upcoming_events_tool = client.create_tool(list_upcoming_events, name="list_
 create_repo_tool = client.create_tool(create_git_repo, name="create_git_repo")
 security_news_tool = client.create_tool(fetch_security_news, name="fetch_security_news")
 send_security_newsletter_tool = client.create_tool(send_security_newsletter, name="send_security_newsletter")
+analyse_website_tool = client.create_tool(analyse_website, name="analyse_website")
 
 with open('persona.txt', 'r') as file:
     persona = file.read()
@@ -76,7 +75,7 @@ agent_state = client.create_agent(
     name="Jarvis", memory=agent_memory,
     tools=[sms_tool.name, search_tool.name, schedule_event_tool.name, list_upcoming_events_tool.name, 
            create_repo_tool.name, read_file_tool.name, write_file_tool.name, 
-           security_news_tool.name, send_security_newsletter_tool.name]
+           security_news_tool.name, send_security_newsletter_tool.name, analyse_website_tool.name]
 )
 
 print(f"Created agent: {agent_state.name} with ID {str(agent_state.id)}")
