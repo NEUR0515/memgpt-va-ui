@@ -10,7 +10,13 @@ const Login = () => {
 
   const navigate = useNavigate();
 
-  const validateForm = () => {
+  ```
+  /**
+   * Validates the form by checking if username and password are provided.
+   * @returns {boolean} True if the form is valid, false otherwise.
+   */
+  
+  ```  const validateForm = () => {
     if (!username || !password) {
       setError('Username and password are required');
       return false;
@@ -19,6 +25,11 @@ const Login = () => {
     return true;
   };
 
+  /**
+   * Handles form submission for user authentication
+   * @param {React.FormEvent} event - The form submission event
+   * @returns {Promise<void>} No return value
+   */
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!validateForm()) return;
@@ -78,9 +89,19 @@ const Login = () => {
             <Input
               placeholder="Username"
               value={username}
+              /**
+               * Event handler for username input change
+               * @param {React.ChangeEvent<HTMLInputElement>} e - The change event object
+               * @returns {void} This function doesn't return a value
+               */
               onChange={(e) => setUsername(e.target.value)}
               bg="gray.600"
               color="white"
+            /**
+             * Updates the password state with the input value
+             * @param {React.ChangeEvent<HTMLInputElement>} e - The change event object from the input field
+             * @returns {void} This function doesn't return a value
+             */
             />
             <Input
               placeholder="Password"
