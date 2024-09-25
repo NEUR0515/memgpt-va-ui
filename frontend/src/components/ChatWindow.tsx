@@ -64,10 +64,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ messages, messagesEndRef, usern
                 </HStack>
               )}
 
-              {/* Regular message */}
+              {/* Regular message with Markdown support */}
               {message.type !== 'thought' && (
                 <Box className={`message-bubble ${message.role}`} p={3} borderRadius="lg">
-                  <ReactMarkdown>{message.content}</ReactMarkdown>
+                  <ReactMarkdown>{message.content}</ReactMarkdown> {/* Show as Markdown */}
                 </Box>
               )}
             </VStack>

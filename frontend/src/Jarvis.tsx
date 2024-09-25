@@ -8,6 +8,7 @@ import LiveTranscription from './components/LiveTranscription';
 import CalendarSection from './components/CalendarSection';  
 import TaskManager from './components/TaskManager';
 import { Message } from './types';
+import sanitizeHtml from 'sanitize-html';
 
 // Declare the types for SpeechRecognition
 declare global {
@@ -191,13 +192,19 @@ function Jarvis() {
   };
 
   const handleSendMessage = (message: string) => {
+    // Sanitize the user's input to remove any unwanted HTML or Markdown
+    const sanitizedMessage = sanitizeHtml(message, {
+      allowedTags: [],  // No HTML tags allowed (plain text only)
+      allowedAttributes: {}, // No attributes allowed
+    });
+  
     const userMessage: Message = {
       role: 'user',
-      content: message,
+      content: sanitizedMessage,  // Use sanitized message content
       timestamp: new Date().toLocaleTimeString(),
       name: username ?? 'User',  // Use the username or default to 'User'
     };
-
+  
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ message: userMessage.content }));
       setMessages((prevMessages) => [...prevMessages, userMessage]);
