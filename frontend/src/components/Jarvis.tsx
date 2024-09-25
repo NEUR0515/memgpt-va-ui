@@ -40,7 +40,6 @@ function Jarvis() {
   const [audioLevel, setAudioLevel] = useState(0);
   const [transcription, setTranscription] = useState(''); // Transcription state
 
-  // Load messages from localStorage when the component is mounted
   useEffect(() => {
     const savedMessages = localStorage.getItem("chatMessages");
     if (savedMessages) {
@@ -51,8 +50,8 @@ function Jarvis() {
         console.error("Error parsing saved messages:", error);
       }
     }
-
-    // After loading messages from localStorage, we set this flag to false, indicating a fresh start
+  
+    // Immediately set this flag to false after loading messages
     setIsPageReloaded(false);
   }, []);  // Only load messages once, on component mount
 
@@ -159,7 +158,6 @@ function Jarvis() {
     }
   };
 
-  // Function to handle incoming WebSocket messages and trigger speech synthesis
   const handleIncomingMessage = (data: any) => {
     if (data.type === 'thought') {
       const thoughtMessage: Message = {
@@ -167,12 +165,11 @@ function Jarvis() {
         content: data.message,
         timestamp: new Date().toLocaleTimeString(),
         name: 'Thought',
-        type: 'thought'  // Ensure the thought message type is set
+        type: 'thought'
       };
       setMessages((prevMessages) => [...prevMessages, thoughtMessage]);
       scrollToBottom();
     } else {
-      // Regular AI message
       const aiMessage: Message = {
         role: 'ai',
         content: data.message,
@@ -181,12 +178,12 @@ function Jarvis() {
       };
       setMessages((prevMessages) => [...prevMessages, aiMessage]);
       scrollToBottom();
-
-      // Only play the TTS if the message is new and different from the last played one
-      // Also, do not play TTS for messages loaded from localStorage (isPageReloaded === false)
-      if (!isPageReloaded && data.message !== lastPlayedMessage) {
+  
+      // Simplified check, only play TTS if it's a new message
+      if (data.message !== lastPlayedMessage) {
         playTTSResponse();
-        setLastPlayedMessage(data.message);  // Update the last played message
+        setLastPlayedMessage(data.message);
+        scrollToBottom();
       }
     }
   };
@@ -211,6 +208,7 @@ function Jarvis() {
     } else {
       console.error("WebSocket is not open. Cannot send message.");
     }
+    scrollToBottom();
   };
 
   const scrollToBottom = () => {
