@@ -1,10 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Spinner, Text, Input, Button, VStack } from '@chakra-ui/react';
 
+/**
+ * TaskManager component for managing and displaying tasks
+ * @returns {React.ReactElement} A React component that renders a task management interface
+ */
 const TaskManager: React.FC = () => {
   const [tasks, setTasks] = useState<string[]>([]);
   const [newTask, setNewTask] = useState<string>('');
   const [error, setError] = useState<string | null>(null);  // Allow both null and string
+  /**
+   * Asynchronously fetches tasks from the API using the token stored in localStorage.
+   * @returns {Promise<void>} Does not return a value, but updates state with fetched tasks or error messages.
+   */
   const [loading, setLoading] = useState(true);
 
   // Fetch tasks from backend
@@ -88,6 +96,11 @@ const TaskManager: React.FC = () => {
         <>
           {tasks.length > 0 ? (
             <VStack align="start" spacing={2}>
+              /**
+               * Renders a list of tasks as bullet points
+               * @param {Array} tasks - An array of task strings to be displayed
+               * @returns {Array<JSX.Element>} An array of Text components, each representing a task
+               */
               {tasks.map((task, index) => (
                 <Text key={index} color="white">• {task}</Text>
               ))}
@@ -101,6 +114,11 @@ const TaskManager: React.FC = () => {
       <Box mt={4}>
         <Input
           value={newTask}
+          /**
+           * Event handler for input change that updates the new task state
+           * @param {React.ChangeEvent<HTMLInputElement>} e - The change event object
+           * @returns {void} This function doesn't return a value
+           */
           onChange={(e) => setNewTask(e.target.value)}
           placeholder="Add a new task"
           bg="gray.600"
