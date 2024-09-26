@@ -27,3 +27,4 @@ python-jose
 SQLAlchemy
 passlib
 serpapi
+APScheduler

@@ -29,11 +29,16 @@ from database import SessionLocal, engine
 from pydantic import BaseModel, HttpUrl
 from fastapi.middleware.cors import CORSMiddleware
 from logout_router import router as auth_router
+from apscheduler.schedulers.background import BackgroundScheduler
+
 dotenv_path = join(dirname(__file__), '.env')
 load_dotenv(dotenv_path)
 
 # FastAPI app
 app = FastAPI()
+
+# Initialize the scheduler
+scheduler = BackgroundScheduler()
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
@@ -68,7 +73,6 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 # Initialize the client and create tools
 client = create_client()
-
 # Function to get an existing agent
 def get_existing_agent(agent_name):
     agents = client.list_agents()
@@ -519,8 +523,23 @@ def play_tts(token: str = Depends(verify_token)):
     else:
         # Return a 404 error if the file is not found
         raise HTTPException(status_code=404, detail="File not found")
+
  # Include the router for authentication-related routes
 app.include_router(auth_router)
+
+# Define your message sending function
+def send_wakeup_message():
+    current_time = datetime.datetime.now().strftime("%H:%M:%S")
+    message = f"Good morning! The time is {current_time}. Let's start the day!"
+    # Broadcast this message via WebSocket or any message system
+    #say(message)  # Example function to send the message
+    broadcast_message(message=message)
+    
+# Schedule the wakeup message at 7:00 AM
+scheduler.add_job(send_wakeup_message, 'cron', hour=22, minute=55)
+
+# Start the scheduler
+scheduler.start()
 
 if __name__ == '__main__':
     #try:
