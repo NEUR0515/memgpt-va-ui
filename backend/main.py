@@ -536,8 +536,8 @@ def send_wakeup_message_wrapper():
 async def send_wakeup_message():
     current_time = datetime.now().strftime("%H:%M:%S")
     message = f"Good morning! The time is {current_time}. Let's start the day!"
-    await broadcast_message(message=message)  # Send the message over WebSocket
     say(message)  # Use the TTS function to speak the message
+    await broadcast_message(message=message)  # Send the message over WebSocket
 
 # Start the scheduler
 scheduler.start()
