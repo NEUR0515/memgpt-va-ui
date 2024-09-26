@@ -528,15 +528,16 @@ def play_tts(token: str = Depends(verify_token)):
 app.include_router(auth_router)
 
 # Define your message sending function
-def send_wakeup_message():
+async def send_wakeup_message():
     current_time = datetime.now().strftime("%H:%M:%S")
     message = f"Good morning! The time is {current_time}. Let's start the day!"
     # Broadcast this message via WebSocket or any message system
     #say(message)  # Example function to send the message
-    broadcast_message(message=message)
+    await broadcast_message(message=message)
+    say(message)
     
 # Schedule the wakeup message at 7:00 AM
-scheduler.add_job(send_wakeup_message, 'cron', hour=22, minute=58)
+scheduler.add_job(send_wakeup_message, 'cron', hour=23, minute=05)
 
 # Start the scheduler
 scheduler.start()
