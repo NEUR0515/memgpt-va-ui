@@ -7,6 +7,11 @@ This is J.A.R.V.I.S, a personal AI assistant designed to handle various tasks in
   <img src="./assets/Screenshot2.png" alt="Image 2" style="width: 30%; margin-right: 10px;"/>
   <img src="./assets/Screenshot3.png" alt="Image 3" style="width: 30%;"/>
 </div>
+<div style="display: flex; flex-wrap: wrap;">
+  <img src="./assets/Screenshot4.png" alt="Image 1" style="width: 30%; margin-right: 10px;"/>
+  <img src="./assets/Screenshot5.png" alt="Image 2" style="width: 30%; margin-right: 10px;"/>
+  <img src="./assets/Screenshot6.png" alt="Image 3" style="width: 30%;"/>
+</div>
 
 ## Features
 

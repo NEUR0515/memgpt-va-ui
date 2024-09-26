@@ -121,3 +121,14 @@ button.clear-messages:hover {
   margin-top: 20px; /* Add some margin for better spacing */
   color: #888888;
 }
+
+.copy-code-button {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background-color: #f5f5f5;
+  border: none;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}

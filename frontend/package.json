@@ -27,6 +27,7 @@
     "react-quill": "^2.0.0",
     "react-router-dom": "^6.26.2",
     "react-scripts": "5.0.1",
+    "react-syntax-highlighter": "^15.5.0",
     "remove-markdown": "^0.5.5",
     "sanitize-html": "^2.13.0",
     "three": "^0.168.0",
@@ -60,6 +61,7 @@
   "devDependencies": {
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
     "@types/react": "^18.3.5",
+    "@types/react-syntax-highlighter": "^15.5.13",
     "@types/sanitize-html": "^2.13.0"
   }
 }

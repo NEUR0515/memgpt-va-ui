@@ -33,6 +33,8 @@ function Jarvis() {
   const [lastPlayedMessage, setLastPlayedMessage] = useState<string | null>(null);  // Track the last played message
   const [isPageReloaded, setIsPageReloaded] = useState(true); // New flag to track if messages are from localStorage
   const [username, setUsername] = useState<string | null>(null);
+  const [firstName, setFirstName] = useState<string | null>(null);
+  const [profilePicture, setProfilePicture] = useState<string | null>(null);  // Add profilePicture state
 
 
   // State for microphone listening
@@ -66,37 +68,41 @@ function Jarvis() {
   // WebSocket connection setup with proper initialization
   const [ws, setWs] = useState<WebSocket | null>(null);
 
-  useEffect(() => {
-    const fetchUsername = async () => {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        // Redirect to login if no token
+// Fetch user info (username and profile picture)
+useEffect(() => {
+  const fetchUserProfile = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      // Redirect to login if no token
+      window.location.href = '/login';
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/user-profile', {  // Adjust endpoint as per your backend
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      if (response.status === 403) {
+        // Token expired or invalid, redirect to login
+        localStorage.removeItem('token');
         window.location.href = '/login';
-        return;
+      } else {
+        const data = await response.json();
+        setUsername(data.username);
+        setFirstName(data.first_name);
+        setProfilePicture(data.profile_picture || '/img/default-avatar.png');  // Set profile picture or fallback to default
       }
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+    }
+  };
 
-      try {
-        const response = await fetch('/api/user-info', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        
-        if (response.status === 403) {
-          // Token expired or invalid, redirect to login
-          localStorage.removeItem('token');
-          window.location.href = '/login';
-        } else {
-          const data = await response.json();
-          setUsername(data.username);  // Store the username in state
-        }
-      } catch (error) {
-        console.error('Error fetching username:', error);
-      }
-    };
+  fetchUserProfile();
+}, []);  // Run once when the component mounts
 
-    fetchUsername();
-  }, []);  // Run once when the component mounts
   useEffect(() => {
     const token = localStorage.getItem("token");  // Get the token from localStorage or wherever it's stored
     const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
@@ -308,7 +314,7 @@ function Jarvis() {
           </Box>
         )}
         <Box flex="1" bg={bgColor} p={4}>
-          <ChatWindow messages={messages} messagesEndRef={messagesEndRef} username={username ?? 'User'} />
+          <ChatWindow messages={messages} messagesEndRef={messagesEndRef} username={username ?? 'User'} profilePicture={profilePicture} firstName={firstName ?? 'Name'} />
         </Box>
         {isRightPanelOpen && (
           <Box
