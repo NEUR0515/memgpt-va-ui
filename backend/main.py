@@ -543,7 +543,7 @@ async def send_wakeup_message():
 scheduler.start()
 
 # Schedule the wakeup message at 7:00 AM
-scheduler.add_job(send_wakeup_message_wrapper, 'cron', hour=23, minute=18)
+scheduler.add_job(send_wakeup_message_wrapper, 'cron', hour=7, minute=0)
 
 if __name__ == '__main__':
     #try:
