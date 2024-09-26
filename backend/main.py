@@ -30,6 +30,7 @@ from pydantic import BaseModel, HttpUrl
 from fastapi.middleware.cors import CORSMiddleware
 from logout_router import router as auth_router
 from apscheduler.schedulers.background import BackgroundScheduler
+import asyncio
 
 dotenv_path = join(dirname(__file__), '.env')
 load_dotenv(dotenv_path)
@@ -527,20 +528,22 @@ def play_tts(token: str = Depends(verify_token)):
  # Include the router for authentication-related routes
 app.include_router(auth_router)
 
+# Define a wrapper function to call the async function
+def send_wakeup_message_wrapper():
+    asyncio.run(send_wakeup_message())  # Run the async function in a synchronous context
+
 # Define your message sending function
 async def send_wakeup_message():
     current_time = datetime.now().strftime("%H:%M:%S")
     message = f"Good morning! The time is {current_time}. Let's start the day!"
-    # Broadcast this message via WebSocket or any message system
-    #say(message)  # Example function to send the message
-    await broadcast_message(message=message)
-    say(message)
-    
-# Schedule the wakeup message at 7:00 AM
-scheduler.add_job(send_wakeup_message, 'cron', hour=23, minute=13)
+    await broadcast_message(message=message)  # Send the message over WebSocket
+    say(message)  # Use the TTS function to speak the message
 
 # Start the scheduler
 scheduler.start()
+
+# Schedule the wakeup message at 7:00 AM
+scheduler.add_job(send_wakeup_message_wrapper, 'cron', hour=23, minute=18)
 
 if __name__ == '__main__':
     #try:
