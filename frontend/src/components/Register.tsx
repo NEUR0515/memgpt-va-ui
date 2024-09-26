@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Box, Input, Button, VStack, FormControl, FormLabel, Heading, Alert, AlertIcon, Spinner, Text } from '@chakra-ui/react';
+import { Box, Input, Button, VStack, FormControl, FormLabel, Heading, Alert, AlertIcon, Spinner, Text, IconButton } from '@chakra-ui/react';
+import { CloseIcon } from '@chakra-ui/icons';  // Import the close icon
 import { Link, useNavigate } from 'react-router-dom';
 
 const Register: React.FC = () => {
@@ -67,8 +68,18 @@ const Register: React.FC = () => {
   };
 
   return (
-    <Box height="100vh" display="flex" alignItems="center" justifyContent="center" bg="gray.900">
+    <Box height="100vh" display="flex" alignItems="center" justifyContent="center" bg="gray.900" position="relative">
       <Box width="400px" p={6} bg="gray.700" borderRadius="md" boxShadow="lg">
+        {/* Close button */}
+        <IconButton
+          icon={<CloseIcon />}
+          aria-label="Close registration"
+          position="absolute"
+          top="10px"
+          right="10px"
+          onClick={() => navigate('/frontend')}  // Navigate back to the frontend
+        />
+
         <Heading mb={6} color="white" textAlign="center">Register</Heading>
 
         {error && (

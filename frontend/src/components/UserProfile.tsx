@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Input, Button, VStack, FormControl, FormLabel, Heading, Text, Alert, AlertIcon, Spinner, Image } from '@chakra-ui/react';
+import { Box, Input, Button, VStack, FormControl, FormLabel, Heading, Text, Alert, AlertIcon, Spinner, Image, IconButton } from '@chakra-ui/react';
+import { CloseIcon } from '@chakra-ui/icons';  // Import the close icon
+import { useNavigate } from 'react-router-dom';  // Import useNavigate for navigation
 
 const UserProfile: React.FC = () => {
   const [firstName, setFirstName] = useState('');
@@ -12,8 +14,9 @@ const UserProfile: React.FC = () => {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const navigate = useNavigate();  // Initialize navigate
+
   useEffect(() => {
-    // Fetch the current user details (You need to have an API endpoint for fetching user data)
     const fetchUserData = async () => {
       try {
         const token = localStorage.getItem('token');
@@ -61,7 +64,7 @@ const UserProfile: React.FC = () => {
       last_name: lastName,
       email: email,
       profile_picture: profilePicture,
-      ...(password ? { password } : {}), // Only include password if it's filled
+      ...(password ? { password } : {}),
     };
 
     try {
@@ -90,8 +93,18 @@ const UserProfile: React.FC = () => {
   };
 
   return (
-    <Box height="100vh" display="flex" alignItems="center" justifyContent="center" bg="gray.900">
+    <Box height="100vh" display="flex" alignItems="center" justifyContent="center" bg="gray.900" position="relative">
       <Box width="400px" p={6} bg="gray.700" borderRadius="md" boxShadow="lg">
+        {/* Close button */}
+        <IconButton
+          icon={<CloseIcon />}
+          aria-label="Close profile"
+          position="absolute"
+          top="10px"
+          right="10px"
+          onClick={() => navigate('/frontend')}  // Navigate back to the frontend
+        />
+
         <Box display="flex" justifyContent="center" mb={4}>
           <Image src={profilePicture || '/img/default-avatar.png'} alt="Profile Picture" boxSize="100px" borderRadius="full" />
         </Box>
