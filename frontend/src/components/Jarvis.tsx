@@ -265,11 +265,12 @@ useEffect(() => {
     // Display interim transcription
     setTranscription(interimTranscription);
 
-    // Send final transcription as a message
-    if (finalTranscription) {
-      handleSendMessage(finalTranscription);
-      setTranscription(''); // Clear transcription
-      setIsListening(false);  // Stop listening
+  // Send final transcription as a message and stop listening
+  if (finalTranscription) {
+    handleSendMessage(finalTranscription);
+    setTranscription('');  // Clear transcription
+    recognition.stop();    // Stop the microphone after the message is sent
+    setIsListening(false); // Update the state to reflect the mic is no longer listening
     }
   };
 

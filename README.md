@@ -16,14 +16,12 @@ This is J.A.R.V.I.S, a personal AI assistant created using MemGPT and designed t
 ## Features
 
 - Realitic and customisable Text-To-Speech using Elevenlabs.
-- WebSocket-based communication between frontend and backend.
-- Support for AI-assisted conversations with dynamic responses.
 - Thought messages visually distinct from other messages.
 - Markdown support and code linting for messages, including bullet points and formatting.
 - SMS messaging integration using Twilio (Currently send only) (WIP).
 - Google Search Capabilities.
 - Create and initialise Git repositories.
-- Ability to use OpenAI/Groq/Custom LLMs and swap custom tools in and out as needed.
+- Ability to use OpenAI/Groq/Custom LLMs and swap custom tools in and out as needed (On Agent creation only).
 - File data can be uploaded straight into Archival Memory using the UI.
 - MemGPT Data Source connections to chat with your data.
 - List upcoming events and create new ones in Google Calendar.
@@ -34,7 +32,7 @@ This is J.A.R.V.I.S, a personal AI assistant created using MemGPT and designed t
 
 - **Backend**: FastAPI, MemGPT, ElevenLabs, Twilio, Git, GoogleAPI's, Firecrawl
 - **Frontend**: React (hosted statically within FastAPI)
-- **WebSocket**: For real-time communication between frontend and backend
+- **WebSocket**: Secured Websockt connection for real-time communication between frontend and backend
 - **Voice Interaction**: Elevenlabs for text-to-speech synthesis
 
 ## Installation
@@ -112,7 +110,7 @@ After running the server, you will need to register an account to begin talking 
 You can interact with J.A.R.V.I.S via text or voice.
 The app uses Elevenlabs for TTS
 
-### Setting up Google Services
+## Setting up Google Services
 
 To use Google Services you need to set up a Google Cloud Platform account and follow the instructions here: [MemGPT Assistant Example](https://github.com/cpacker/MemGPT/blob/main/examples/personal_assistant_demo/README.md)
 
