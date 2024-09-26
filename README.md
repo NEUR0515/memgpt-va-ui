@@ -8,9 +8,9 @@ This is J.A.R.V.I.S, a personal AI assistant designed to handle various tasks in
   <img src="./assets/Screenshot3.png" alt="Image 3" style="width: 30%;"/>
 </div>
 <div style="display: flex; flex-wrap: wrap;">
-  <img src="./assets/Screenshot4.png" alt="Image 1" style="width: 30%; margin-right: 10px;"/>
-  <img src="./assets/Screenshot5.png" alt="Image 2" style="width: 30%; margin-right: 10px;"/>
-  <img src="./assets/Screenshot6.png" alt="Image 3" style="width: 30%;"/>
+  <img src="./assets/Screenshot4.png" alt="Image 4" style="width: 30%; margin-right: 10px;"/>
+  <img src="./assets/Screenshot5.png" alt="Image 5" style="width: 30%; margin-right: 10px;"/>
+  <img src="./assets/Screenshot6.png" alt="Image 6" style="width: 30%;"/>
 </div>
 
 ## Features
@@ -19,7 +19,7 @@ This is J.A.R.V.I.S, a personal AI assistant designed to handle various tasks in
 - WebSocket-based communication between frontend and backend.
 - Support for AI-assisted conversations with dynamic responses.
 - Thought messages visually distinct from other messages.
-- Markdown support for messages, including bullet points and formatting (WIP).
+- Markdown support and code linting for messages, including bullet points and formatting.
 - SMS messaging integration using Twilio (Currently send only) (WIP).
 - Google Search Capabilities.
 - Create and initialise Git repositories.
@@ -28,10 +28,11 @@ This is J.A.R.V.I.S, a personal AI assistant designed to handle various tasks in
 - MemGPT Data Source connections to chat with your data.
 - List upcoming events and create new ones in Google Calendar.
 - HTTPS and WSS supported
+- Crawl and summarise websites
 
 ## Technologies Used
 
-- **Backend**: FastAPI, MemGPT, ElevenLabs, Twilio, Git
+- **Backend**: FastAPI, MemGPT, ElevenLabs, Twilio, Git, GoogleAPI's, Firecrawl
 - **Frontend**: React (hosted statically within FastAPI)
 - **WebSocket**: For real-time communication between frontend and backend
 - **Voice Interaction**: Elevenlabs for text-to-speech synthesis
@@ -107,7 +108,7 @@ http://your-ip-address:8000/
 
 ### Using the Application
 
-After running the server, the application is available at the /frontend endpoint.
+After running the server, you will need to register an account to begin talking to Jarvis.
 You can interact with J.A.R.V.I.S via text or voice.
 The app uses Elevenlabs for TTS
 
