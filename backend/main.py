@@ -385,7 +385,7 @@ async def broadcast_message(message: str):
     #print(f"Attempting to broadcast message: {message}")
     for connection in active_connections:
         try:
-            #print(f"Broadcasting message: {message}")
+            print(f"Broadcasting message: {message}")
             await connection.send_json({"message": message})  # Proper JSON format
         except Exception as e:
             print(f"Error sending message to WebSocket: {e}")
@@ -537,7 +537,7 @@ async def send_wakeup_message():
     say(message)
     
 # Schedule the wakeup message at 7:00 AM
-scheduler.add_job(send_wakeup_message, 'cron', hour=23, minute=8)
+scheduler.add_job(send_wakeup_message, 'cron', hour=23, minute=13)
 
 # Start the scheduler
 scheduler.start()
