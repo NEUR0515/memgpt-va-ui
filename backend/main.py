@@ -69,7 +69,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # Your JWT secret and algorithm
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 720 # (12 Hours)
 
 # Initialize the client and create tools
 client = create_client()
@@ -537,7 +537,7 @@ async def send_wakeup_message():
     say(message)
     
 # Schedule the wakeup message at 7:00 AM
-scheduler.add_job(send_wakeup_message, 'cron', hour=23, minute=05)
+scheduler.add_job(send_wakeup_message, 'cron', hour=23, minute=8)
 
 # Start the scheduler
 scheduler.start()
