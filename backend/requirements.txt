@@ -26,3 +26,4 @@ cryptography
 python-jose
 SQLAlchemy
 passlib
+serpapi
