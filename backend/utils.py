@@ -1,6 +1,7 @@
 import pygame
 import os
 import time
+import re
 import tempfile
 from os.path import join, dirname
 from dotenv import load_dotenv
@@ -27,12 +28,29 @@ def play_audio(file_path):
     while pygame.mixer.music.get_busy():
         time.sleep(1)
 
+def sanitize_for_tts(message: str) -> str:
+    # Remove URLs
+    sanitized_message = re.sub(r'https?:\/\/[^\s]+', '[link]', message)
+
+    # Remove code blocks (```)
+    sanitized_message = re.sub(r'```[\s\S]*?```', '[code]', sanitized_message)
+
+    # Remove inline code (`code`)
+    sanitized_message = re.sub(r'`[^`]+`', '[code]', sanitized_message)
+
+    # Add any other sanitization rules if needed
+
+    return sanitized_message
+
 def say(message, filename="output.mp3", index=None):
     try:
         # Ensure the API key is loaded
         api_key = os.getenv("ELEVENLABS_API_KEY")
         if not api_key:
             raise Exception("ELEVENLABS_API_KEY is missing from the environment variables.")
+
+        # Sanitize the message to remove URLs and code
+        sanitized_message = sanitize_for_tts(message)
 
         # Initialize the ElevenLabs client
         client = ElevenLabs(api_key=api_key)
@@ -47,9 +65,9 @@ def say(message, filename="output.mp3", index=None):
             )
         )
 
-        # Generate the audio using the ElevenLabs API
+        # Generate the audio using the ElevenLabs API with the sanitized message
         audio = client.generate(
-            text=message,
+            text=sanitized_message,
             voice=voice,
             model="eleven_multilingual_v2"
         )
