@@ -19,7 +19,7 @@ const getAvatarSrc = (role: string, profilePicture: string | null) => {
   if (role === 'user') {
     return profilePicture || '/img/default-avatar.png'; // Return user's profile picture or default avatar
   }
-  return '/img/jarvis.gif';  // Path to Jarvis avatar
+  return '/img/jarvis.png';  // Path to Jarvis avatar
 };
 
 const ChatWindow: React.FC<ChatWindowProps> = ({ messages, messagesEndRef, username, profilePicture, firstName }) => {
@@ -85,26 +85,30 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ messages, messagesEndRef, usern
             alignSelf={message.role === 'user' ? 'flex-end' : 'flex-start'}
             maxWidth="fit-content"
           >
-            {/* Avatar */}
-            <Avatar
-              name={message.name}
-              src={getAvatarSrc(message.role, profilePicture)}  // Use the updated avatar source
-              className="avatar"
-            />
+            {/* Avatar or Thought Icon */}
+            {message.type === 'thought' ? (
+              <Box as="span" fontSize="2xl" className="thought-icon">💭</Box>  // Display the thought bubble icon
+            ) : (
+              <Avatar
+                name={message.name}
+                src={getAvatarSrc(message.role, profilePicture)}  // Use the updated avatar source
+                className="avatar"
+              />
+            )}
+
             {/* Message content */}
             <VStack align="flex-start" spacing={1} maxWidth="fit-content">
               <HStack spacing={3}>
-                {/* Name and timestamp */}
+                {/* "Thoughts" label instead of the name for thought messages */}
                 <Text fontWeight="bold" color={textColor}>
-                  {message.role === 'user' ? firstName : message.name} {/* Show username for user */}
+                  {message.type === 'thought' ? 'Thoughts' : message.role === 'user' ? firstName : message.name} {/* Show "Thoughts" */}
                 </Text>
                 <Text fontSize="xs" color="gray.400">{message.timestamp}</Text>
               </HStack>
 
-              {/* Thought message icon */}
+              {/* Thought message content */}
               {message.type === 'thought' && (
                 <HStack spacing={1}>
-                  <Box as="span" className="thought-icon">💭</Box>
                   <Text fontStyle="italic" color="gray.300">{message.content}</Text>
                 </HStack>
               )}

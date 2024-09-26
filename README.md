@@ -1,6 +1,6 @@
 # MemGPT Voice Assistant UI
 
-This is J.A.R.V.I.S, a personal AI assistant designed to handle various tasks including sending SMS messages, creating files and folders, conversation and task management, and more. The application is built using a FastAPI backend, with a React frontend and integrated with Elevenlabs for voice functionalities. The frontend is hosted statically within the backend, and the app can be accessed directly through a browser.
+This is J.A.R.V.I.S, a personal AI assistant created using MemGPT and designed to handle various tasks including sending SMS messages, creating files and folders, conversation and task management, and more. The application is built using a FastAPI backend, with a React frontend and integrated with Elevenlabs for voice functionalities. The frontend is hosted statically within the backend, and the app can be accessed directly through a browser.
 
 <div style="display: flex; flex-wrap: wrap;">
   <img src="./assets/Screenshot1.png" alt="Image 1" style="width: 30%; margin-right: 10px;"/>
@@ -93,7 +93,7 @@ cd app/backend
 uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
-### Accessing the Frontend
+## Accessing the Frontend
 
 The React frontend is hosted statically through the backend. You can access it by navigating to:
 
@@ -116,11 +116,11 @@ The app uses Elevenlabs for TTS
 
 To use Google Services you need to set up a Google Cloud Platform account and follow the instructions here: [MemGPT Assistant Example](https://github.com/cpacker/MemGPT/blob/main/examples/personal_assistant_demo/README.md)
 
-### Contact
+## Contact
 
 For any issues or suggestions, feel free to open an issue in the repository or contact me via email.
 
-### DISCLAIMER
+## DISCLAIMER
 
 I am not a professional Python or React developer and this is just a personal project.
 

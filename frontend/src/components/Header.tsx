@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Box, HStack, IconButton, Image, useColorMode, useColorModeValue, Text, Avatar, Menu, MenuButton, MenuList, MenuItem } from '@chakra-ui/react';
-import { FiLogOut, FiSun, FiMoon } from 'react-icons/fi';
+import { FiSun, FiMoon } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 
 const handleLogout = async () => {
@@ -35,7 +35,7 @@ const Header = () => {
       }
 
       try {
-        const response = await fetch('/api/user-info', {
+        const response = await fetch('/api/user-profile', {
           headers: {
             Authorization: `Bearer ${token}`,
           },

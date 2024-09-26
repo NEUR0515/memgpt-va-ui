@@ -36,7 +36,6 @@ function Jarvis() {
   const [firstName, setFirstName] = useState<string | null>(null);
   const [profilePicture, setProfilePicture] = useState<string | null>(null);  // Add profilePicture state
 
-
   // State for microphone listening
   const [isListening, setIsListening] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
