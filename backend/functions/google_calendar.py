@@ -6,8 +6,8 @@ from googleapiclient.discovery import build
 import os
 
 # Define paths for token and credentials
-TOKEN_PATH = os.path.expanduser("~/.memgpt/gcal_token.json")
-CREDENTIALS_PATH = os.path.expanduser("~/.memgpt/google_api_credentials.json")
+TOKEN_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'backend', 'gcal_token.json')
+CREDENTIALS_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'backend', 'google_api_credentials.json')
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
 
 # This function is used to get the Google Calendar API service

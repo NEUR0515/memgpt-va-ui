@@ -186,9 +186,10 @@ useEffect(() => {
   
       // Simplified check, only play TTS if it's a new message
       if (data.message !== lastPlayedMessage) {
+        scrollToBottom();
         playTTSResponse();
         setLastPlayedMessage(data.message);
-        scrollToBottom();
+
       }
     }
   };
