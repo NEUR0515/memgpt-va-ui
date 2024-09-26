@@ -25,10 +25,11 @@
 /* AI messages align left */
 .chat-message.ai {
   justify-content: flex-start;
-  background-color: #2c2f33;
+  background-color: #4A5568;
   margin-right: auto;
   max-width: 60%;
   box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2); /* Slightly stronger shadow for AI messages */
+  color: white;
 }
 
 /* Thought messages styling */
