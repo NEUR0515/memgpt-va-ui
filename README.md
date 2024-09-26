@@ -27,10 +27,11 @@ This is J.A.R.V.I.S, a personal AI assistant created using MemGPT and designed t
 - List upcoming events and create new ones in Google Calendar.
 - HTTPS and WSS supported
 - Crawl and summarise websites
+- Interact with Home Assistant and it's devices
 
 ## Technologies Used
 
-- **Backend**: FastAPI, MemGPT, ElevenLabs, Twilio, Git, GoogleAPI's, Firecrawl
+- **Backend**: FastAPI, MemGPT, ElevenLabs, Twilio, Git, GoogleAPI's, Firecrawl, Home Assistant
 - **Frontend**: React (hosted statically within FastAPI)
 - **WebSocket**: Secured Websockt connection for real-time communication between frontend and backend
 - **Voice Interaction**: Elevenlabs for text-to-speech synthesis
@@ -75,6 +76,7 @@ cp app/backend/.env-example app/backend/.env
 
 ```bash
 cd app/frontend
+npm install
 npm run build
 ```
 

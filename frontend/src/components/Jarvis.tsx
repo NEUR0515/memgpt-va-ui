@@ -46,7 +46,7 @@ function Jarvis() {
     if (savedMessages) {
       try {
         setMessages(JSON.parse(savedMessages));
-        console.log("Messages loaded from localStorage:", savedMessages);
+        console.log("Messages loaded from localStorage:");
       } catch (error) {
         console.error("Error parsing saved messages:", error);
       }
@@ -60,7 +60,7 @@ function Jarvis() {
   useEffect(() => {
     if (messages.length > 0) {
       localStorage.setItem("chatMessages", JSON.stringify(messages));
-      console.log("Messages saved to localStorage:", messages);
+      console.log("Messages saved to localStorage:");
     }
   }, [messages]);  // Only update when messages change
 
