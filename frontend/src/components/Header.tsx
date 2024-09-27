@@ -87,7 +87,7 @@ const Header: React.FC<HeaderProps> = ({ isTtsEnabled, setIsTtsEnabled }) => {
     <Box position="relative" width="100%" maxW="100vw" boxShadow="md" bg={bg} p={4}>
       <HStack justify="space-between" align="center">
         {/* Logo on the left with link to homepage */}
-        <a href='/'>
+        <a href='/frontend'>
           <Image src="/img/logo.png" alt="Logo" boxSize={{ base: "40px", md: "50px" }} cursor="pointer" />
         </a>
 
