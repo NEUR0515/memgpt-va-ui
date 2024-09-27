@@ -25,6 +25,8 @@ recognition.continuous = true;
 recognition.interimResults = true;
 recognition.lang = 'en-GB';
 
+
+
 function Jarvis() {
   const { isOpen: isLeftPanelOpen, onToggle: toggleLeftPanel } = useDisclosure();
   const { isOpen: isRightPanelOpen, onToggle: toggleRightPanel } = useDisclosure();
@@ -35,6 +37,12 @@ function Jarvis() {
   const [username, setUsername] = useState<string | null>(null);
   const [firstName, setFirstName] = useState<string | null>(null);
   const [profilePicture, setProfilePicture] = useState<string | null>(null);  // Add profilePicture state
+
+  // TTS state, synchronized with localStorage
+  const [isTtsEnabled, setIsTtsEnabled] = useState<boolean>(() => {
+    const savedTtsPreference = localStorage.getItem('ttsEnabled');
+    return savedTtsPreference ? JSON.parse(savedTtsPreference) : true;  // Default to true
+  });
 
   // State for microphone listening
   const [isListening, setIsListening] = useState(false);
@@ -135,25 +143,30 @@ useEffect(() => {
 
   // Function to fetch and play the TTS MP3
   const playTTSResponse = async () => {
+    if (!isTtsEnabled) {
+      console.log("TTS is disabled, skipping playback.");
+      return;
+    }
+
     try {
       const token = localStorage.getItem('token');  // Assuming the token is stored in localStorage
       if (!token) {
         console.log('No token found');
         return;
       }
-  
+
       // Fetch the TTS MP3 from the server
       const response = await fetch('/api/play-tts', {
         headers: {
           'Authorization': `Bearer ${token}`,  // Pass the token in the headers
         },
       });
-  
+
       if (!response.ok) {
         console.error(`Error: ${response.status} - ${response.statusText}`);
         return;
       }
-  
+
       const audioBlob = await response.blob();
       const audioUrl = URL.createObjectURL(audioBlob);
       const audio = new Audio(audioUrl);
@@ -185,7 +198,7 @@ useEffect(() => {
       scrollToBottom();
   
       // Simplified check, only play TTS if it's a new message
-      if (data.message !== lastPlayedMessage) {
+      if (isTtsEnabled && data.message !== lastPlayedMessage) {
         scrollToBottom();
         playTTSResponse();
         setLastPlayedMessage(data.message);
@@ -297,7 +310,7 @@ useEffect(() => {
 
   return (
     <Flex direction="column" height="100vh">
-      <Header />
+      <Header isTtsEnabled={isTtsEnabled} setIsTtsEnabled={setIsTtsEnabled}/>
       <Flex
         flex="1"
         overflow="hidden"

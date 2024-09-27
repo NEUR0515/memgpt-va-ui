@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Box, HStack, IconButton, Image, useColorMode, useColorModeValue, Text, Avatar, Menu, MenuButton, MenuList, MenuItem } from '@chakra-ui/react';
-import { FiSun, FiMoon } from 'react-icons/fi';
+import { FiSun, FiMoon, FiVolumeX, FiVolume2 } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 
 const handleLogout = async () => {
@@ -20,14 +20,20 @@ const handleLogout = async () => {
   window.location.href = '/';
 };
 
-const Header = () => {
+// Define the types for the props
+interface HeaderProps {
+  isTtsEnabled: boolean;
+  setIsTtsEnabled: (value: boolean) => void;
+}
+
+const Header: React.FC<HeaderProps> = ({ isTtsEnabled, setIsTtsEnabled }) => {
   const { colorMode, toggleColorMode } = useColorMode();
   const [username, setUsername] = useState('');
   const [profilePicture, setProfilePicture] = useState('/img/default-avatar.png');
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchUsername = async () => {
+    const fetchUserProfile = async () => {
       const token = localStorage.getItem('token');
       if (!token) {
         window.location.href = '/login';
@@ -47,17 +53,31 @@ const Header = () => {
           window.location.href = '/login';
           return;
         }
-        
+
         const data = await response.json();
         setUsername(data.username);
         setProfilePicture(data.profile_picture || '/img/default-avatar.png');
+
+        // Only set the TTS state if it's not already initialized
+        if (localStorage.getItem('ttsEnabled') === null) {
+          localStorage.setItem('ttsEnabled', JSON.stringify(isTtsEnabled));
+        } else {
+          const savedTtsEnabled = JSON.parse(localStorage.getItem('ttsEnabled')!);
+          setIsTtsEnabled(savedTtsEnabled);
+        }
       } catch (error) {
         console.error('Error fetching username:', error);
       }
     };
 
-    fetchUsername();
-  }, []);
+    fetchUserProfile();
+  }, [isTtsEnabled, setIsTtsEnabled]);
+
+  const toggleTts = () => {
+    const newTtsState = !isTtsEnabled;
+    setIsTtsEnabled(newTtsState);
+    localStorage.setItem('ttsEnabled', JSON.stringify(newTtsState));
+  };
 
   const bg = useColorModeValue('gray.100', 'gray.900');
   const textColor = useColorModeValue('gray.800', 'white');
@@ -70,7 +90,13 @@ const Header = () => {
         <Image src="/img/logo.png" alt="Logo" boxSize={{ base: "40px", md: "50px" }} />
 
         {/* Profile Icon Menu on the right */}
-        <HStack>
+        <HStack spacing={4}>
+          {/* TTS toggle */}
+          <IconButton
+            icon={isTtsEnabled ? <FiVolume2 /> : <FiVolumeX />}
+            aria-label="Toggle TTS"
+            onClick={toggleTts}
+          />
           <IconButton
             icon={colorMode === 'light' ? <FiMoon /> : <FiSun />}
             aria-label="Toggle Theme"
@@ -80,7 +106,6 @@ const Header = () => {
             _hover={{ bg: hoverColor }}
             transition="background-color 0.3s"
           />
-
           <Menu>
             <MenuButton>
               <Avatar size="md" name={username} src={profilePicture} cursor="pointer" />
