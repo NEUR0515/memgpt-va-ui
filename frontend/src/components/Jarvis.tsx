@@ -9,6 +9,8 @@ import CalendarSection from './CalendarSection';
 import TaskManager from './TaskManager';
 import { Message } from '../types';
 import sanitizeHtml from 'sanitize-html';
+import WebPlayback from './WebPlayback';
+import { useSearchParams } from 'react-router-dom';
 
 // Declare the types for SpeechRecognition
 declare global {
@@ -48,6 +50,23 @@ function Jarvis() {
   const [isListening, setIsListening] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
   const [transcription, setTranscription] = useState(''); // Transcription state
+
+  const [spotifyToken, setSpotifyToken] = useState('');
+  const [searchParams] = useSearchParams();
+  useEffect(() => {
+    // Check if the access_token is in the URL params
+    const token = searchParams.get('access_token');
+    if (token) {
+      setSpotifyToken(token);
+      localStorage.setItem('spotifyToken', token); // Store in localStorage for future use
+    } else {
+      // Fetch from localStorage if it exists
+      const storedToken = localStorage.getItem('spotifyToken');
+      if (storedToken) {
+        setSpotifyToken(storedToken);
+      }
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const savedMessages = localStorage.getItem("chatMessages");
@@ -353,6 +372,17 @@ useEffect(() => {
         isListening={isListening}
         toggleListening={toggleListening}
       />
+      <div>
+        {spotifyToken ? (
+          <WebPlayback token={spotifyToken} />
+        ) : (
+          <div style={{ position: 'fixed', bottom: '20px', right: '20px', backgroundColor: '#282828', color: 'white', padding: '10px', borderRadius: '8px' }}>
+            <a className="btn-spotify" href="/auth/login">
+              Login with Spotify
+            </a>
+          </div>
+        )}
+      </div>
     </Flex>
   );
 }

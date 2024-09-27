@@ -3,10 +3,11 @@ import logging
 from os.path import join, dirname, exists
 import ast
 import re
+import requests
 from fastapi import FastAPI, UploadFile, WebSocket, WebSocketDisconnect, HTTPException, Body, Depends, status, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from memgpt import create_client, memory
 from utils import say
 import uvicorn
@@ -31,6 +32,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from logout_router import router as auth_router
 from apscheduler.schedulers.background import BackgroundScheduler
 import asyncio
+import base64
 
 dotenv_path = join(dirname(__file__), '.env')
 load_dotenv(dotenv_path)
@@ -71,6 +73,12 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 720 # (12 Hours)
+
+CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID')
+CLIENT_SECRET = os.getenv('SPOTIFY_CLIENT_SECRET')
+REDIRECT_URI = "http://localhost:8000/auth/callback"
+SPOTIFY_AUTH_URL = "https://accounts.spotify.com/authorize"
+TOKEN_URL = "https://accounts.spotify.com/api/token"
 
 # Initialize the client and create tools
 client = create_client()
@@ -524,6 +532,52 @@ def play_tts(token: str = Depends(verify_token)):
     else:
         # Return a 404 error if the file is not found
         raise HTTPException(status_code=404, detail="File not found")
+    
+# Authorization Endpoint
+@app.get("/auth/login")
+async def login():
+    scopes = "user-read-private user-read-email streaming"
+    auth_url = f"{SPOTIFY_AUTH_URL}?response_type=code&client_id={CLIENT_ID}&scope={scopes}&redirect_uri={REDIRECT_URI}"
+    
+    # Redirect the user to the Spotify authorization page
+    return RedirectResponse(url=auth_url)
+
+@app.get("/auth/callback")
+async def callback(code: str):
+    # Exchange the authorization code for an access token
+    auth_options = {
+        "url": "https://accounts.spotify.com/api/token",
+        "form": {
+            "code": code,
+            "redirect_uri": REDIRECT_URI,
+            "grant_type": "authorization_code",
+        },
+        "headers": {
+            "Authorization": "Basic " + base64.b64encode(f"{CLIENT_ID}:{CLIENT_SECRET}".encode()).decode(),
+            "Content-Type": "application/x-www-form-urlencoded",
+        },
+    }
+
+    response = requests.post(auth_options["url"], data=auth_options["form"], headers=auth_options["headers"])
+    if response.status_code == 200:
+        access_token = response.json().get("access_token")
+
+        # Instead of showing the token, redirect the user back to your frontend with the token in URL params
+        return RedirectResponse(url=f"http://localhost:8000/frontend?access_token={access_token}")
+
+    return {"error": "Failed to get access token"}
+
+# Refresh Token Endpoint (optional)
+@app.get("/auth/refresh")
+async def refresh_token(refresh_token: str):
+    data = {
+        "grant_type": "refresh_token",
+        "refresh_token": refresh_token,
+        "client_id": CLIENT_ID,
+        "client_secret": CLIENT_SECRET,
+    }
+    token_response = requests.post(TOKEN_URL, data=data)
+    return token_response.json()
 
  # Include the router for authentication-related routes
 app.include_router(auth_router)
