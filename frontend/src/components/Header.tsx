@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, HStack, IconButton, Image, useColorMode, useColorModeValue, Text, Avatar, Menu, MenuButton, MenuList, MenuItem } from '@chakra-ui/react';
 import { FiSun, FiMoon, FiVolumeX, FiVolume2 } from 'react-icons/fi';
-import { useNavigate } from 'react-router-dom';
+import {useNavigate } from 'react-router-dom';
 
 const handleLogout = async () => {
   localStorage.removeItem('token');
@@ -86,8 +86,10 @@ const Header: React.FC<HeaderProps> = ({ isTtsEnabled, setIsTtsEnabled }) => {
   return (
     <Box position="relative" width="100%" maxW="100vw" boxShadow="md" bg={bg} p={4}>
       <HStack justify="space-between" align="center">
-        {/* Logo on the left */}
-        <Image src="/img/logo.png" alt="Logo" boxSize={{ base: "40px", md: "50px" }} />
+        {/* Logo on the left with link to homepage */}
+        <a href='/'>
+          <Image src="/img/logo.png" alt="Logo" boxSize={{ base: "40px", md: "50px" }} cursor="pointer" />
+        </a>
 
         {/* Profile Icon Menu on the right */}
         <HStack spacing={4}>
