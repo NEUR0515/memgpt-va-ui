@@ -78,7 +78,13 @@ const Header: React.FC<HeaderProps> = ({ isTtsEnabled, setIsTtsEnabled }) => {
     setIsTtsEnabled(newTtsState);
     localStorage.setItem('ttsEnabled', JSON.stringify(newTtsState));
   };
-
+  const handleSpotifyLogout = () => {
+    // Remove the token from localStorage
+    localStorage.removeItem('spotifyToken');
+    
+    // Optionally redirect or refresh the page to reflect the logout
+    window.location.reload(); // or redirect to another page
+  };
   const bg = useColorModeValue('gray.100', 'gray.900');
   const textColor = useColorModeValue('gray.800', 'white');
   const hoverColor = useColorModeValue('gray.200', 'gray.700');
@@ -115,6 +121,7 @@ const Header: React.FC<HeaderProps> = ({ isTtsEnabled, setIsTtsEnabled }) => {
             <MenuList>
               <MenuItem onClick={() => navigate('/profile')}>My Profile</MenuItem>
               <MenuItem onClick={handleLogout}>Logout</MenuItem>
+              <MenuItem onClick={handleSpotifyLogout}>Logout from Spotify</MenuItem>
             </MenuList>
           </Menu>
         </HStack>

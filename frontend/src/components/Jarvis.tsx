@@ -10,7 +10,7 @@ import TaskManager from './TaskManager';
 import { Message } from '../types';
 import sanitizeHtml from 'sanitize-html';
 import WebPlayback from './WebPlayback';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useLocation } from 'react-router-dom';
 
 // Declare the types for SpeechRecognition
 declare global {
@@ -53,14 +53,14 @@ function Jarvis() {
 
   const [spotifyToken, setSpotifyToken] = useState('');
   const [searchParams] = useSearchParams();
+
+  // Check if the access_token is in the URL params
   useEffect(() => {
-    // Check if the access_token is in the URL params
     const token = searchParams.get('access_token');
     if (token) {
       setSpotifyToken(token);
-      localStorage.setItem('spotifyToken', token); // Store in localStorage for future use
+      localStorage.setItem('spotifyToken', token); // Store token in localStorage
     } else {
-      // Fetch from localStorage if it exists
       const storedToken = localStorage.getItem('spotifyToken');
       if (storedToken) {
         setSpotifyToken(storedToken);
