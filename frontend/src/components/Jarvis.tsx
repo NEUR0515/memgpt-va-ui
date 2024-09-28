@@ -379,7 +379,7 @@ useEffect(() => {
     {/* Spotify Component */}
     {spotifyToken ? (
       isSpotifyVisible ? (
-        <WebPlayback token={spotifyToken} />
+        <WebPlayback spotifyToken={spotifyToken} />
       ) : null
     ) : (
       <div style={{ position: 'fixed', bottom: '20px', right: '20px', backgroundColor: '#282828', color: 'white', padding: '10px', borderRadius: '8px' }}>

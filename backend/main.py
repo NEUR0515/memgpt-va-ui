@@ -25,7 +25,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from datetime import datetime, timedelta, timezone
 from passlib.context import CryptContext
-from models import User
+from models import User, SpotifyToken
 from database import SessionLocal, engine
 from pydantic import BaseModel, HttpUrl
 from fastapi.middleware.cors import CORSMiddleware
@@ -556,21 +556,20 @@ async def login(request: Request):
     return RedirectResponse(url=auth_url)
 
 @app.get("/auth/callback")
-async def spotify_callback(request: Request, code: str = Query(...)):
+async def spotify_callback(request: Request, code: str = Query(...), db: Session = Depends(get_db)):
     token_url = "https://accounts.spotify.com/api/token"
     
-    # Build the dynamic redirect_uri using the full request URL
-    base_url = str(request.url).split('/auth/callback')[0]  # Removes the path part of the current URL
+    base_url = str(request.url).split('/auth/callback')[0]
     redirect_uri = f"{base_url}/auth/callback"
 
     body = {
         "grant_type": "authorization_code",
         "code": code,
-        "redirect_uri": redirect_uri,  # Use the dynamically generated redirect URI
+        "redirect_uri": redirect_uri,
         "client_id": CLIENT_ID,
         "client_secret": CLIENT_SECRET,
     }
-    
+
     headers = {
         "Content-Type": "application/x-www-form-urlencoded"
     }
@@ -579,15 +578,35 @@ async def spotify_callback(request: Request, code: str = Query(...)):
     if response.status_code == 200:
         token_data = response.json()
         access_token = token_data["access_token"]
+        refresh_token = token_data["refresh_token"]
+        expires_in = token_data["expires_in"]
+        expires_at = datetime.now() + timedelta(seconds=expires_in)
 
-        # Get the base URL from the request (either localhost or external URL)
-        base_url = str(request.base_url)
-        # Construct the redirect URL dynamically
-        redirect_url = f"{base_url}frontend?access_token={access_token}"
+        # Store tokens in the database
+        user = get_current_user(db, request.cookies.get("token"))
+        spotify_token = db.query(SpotifyToken).filter_by(user_id=user.id).first()
         
-        return RedirectResponse(redirect_url)
+        if spotify_token:
+            spotify_token.access_token = access_token
+            spotify_token.refresh_token = refresh_token
+            spotify_token.expires_at = expires_at
+        else:
+            spotify_token = SpotifyToken(
+                user_id=user.id,
+                access_token=access_token,
+                refresh_token=refresh_token,
+                expires_at=expires_at
+            )
+            db.add(spotify_token)
+
+        db.commit()
+
+        # Redirect back to the frontend with the access token
+        redirect_url = f"{base_url}/frontend?access_token={access_token}"
+        return RedirectResponse(url=redirect_url)
+
     else:
-        return {"error": "Failed to obtain access token"}
+        return {"error": "Failed to obtain Spotify access token"}
 
 # Refresh Token Endpoint (optional)
 @app.get("/auth/refresh")

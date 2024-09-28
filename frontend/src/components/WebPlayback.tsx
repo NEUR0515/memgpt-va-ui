@@ -3,7 +3,7 @@ import { FaPlay, FaPause, FaStepBackward, FaStepForward, FaRandom, FaTv } from '
 import axios from 'axios';
 
 interface WebPlaybackProps {
-  token: string;
+  spotifyToken: string;
 }
 
 interface SpotifyDevice {
@@ -15,7 +15,7 @@ interface SpotifyDevice {
   volume_percent: number;
 }
 
-const WebPlayback: React.FC<WebPlaybackProps> = ({ token }) => {
+const WebPlayback: React.FC<WebPlaybackProps> = ({ spotifyToken }) => {
   const [player, setPlayer] = useState<any>(null);
   const [isPaused, setIsPaused] = useState(true);
   const [currentTrack, setCurrentTrack] = useState({
@@ -27,6 +27,19 @@ const WebPlayback: React.FC<WebPlaybackProps> = ({ token }) => {
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null);
   const [isDevicePickerOpen, setIsDevicePickerOpen] = useState(false);
   const devicePickerRef = useRef<HTMLDivElement>(null); // Assigning the correct type
+
+  // Refresh the token 5 minutes before it expires (tokens are valid for 1 hour)
+  useEffect(() => {
+    const refreshTokenInterval = setInterval(async () => {
+      const response = await fetch("/auth/refresh", { method: "POST" });
+      const data = await response.json();
+      if (data.access_token) {
+        localStorage.setItem("spotifyToken", data.access_token); // Save new token in localStorage
+      }
+    }, 55 * 60 * 1000); // Refresh token after 55 minutes
+
+    return () => clearInterval(refreshTokenInterval);  // Cleanup
+  }, [spotifyToken]);
 
   const toggleDevicePicker = async () => {
     setIsDevicePickerOpen(!isDevicePickerOpen);
@@ -58,7 +71,7 @@ const WebPlayback: React.FC<WebPlaybackProps> = ({ token }) => {
     window.onSpotifyWebPlaybackSDKReady = () => {
       const player = new window.Spotify.Player({
         name: 'Jarvis',
-        getOAuthToken: (cb: any) => { cb(token); },
+        getOAuthToken: (cb: any) => { cb(spotifyToken); },
         volume: 0.5,
       });
       setPlayer(player);
@@ -83,13 +96,13 @@ const WebPlayback: React.FC<WebPlaybackProps> = ({ token }) => {
     return () => {
       if (player) player.disconnect();
     };
-  }, [token]);
+  }, [spotifyToken]);
 
   const fetchDevices = async () => {
     try {
       const response = await fetch('https://api.spotify.com/v1/me/player/devices', {
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${spotifyToken}`,
         },
       });
 
@@ -112,7 +125,7 @@ const WebPlayback: React.FC<WebPlaybackProps> = ({ token }) => {
 
   useEffect(() => {
     fetchDevices();
-  }, [token]);
+  }, [spotifyToken]);
 
   const transferPlayback = async (deviceId: string) => {
     try {
@@ -121,7 +134,7 @@ const WebPlayback: React.FC<WebPlaybackProps> = ({ token }) => {
         { device_ids: [deviceId], play: true },
         {
           headers: {
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${spotifyToken}`,
           },
         }
       );
@@ -138,7 +151,7 @@ const WebPlayback: React.FC<WebPlaybackProps> = ({ token }) => {
     try {
       const response = await fetch('https://api.spotify.com/v1/me/player', {
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${spotifyToken}`,
         },
       });
   
@@ -174,7 +187,7 @@ const WebPlayback: React.FC<WebPlaybackProps> = ({ token }) => {
         method: method,
         url: endpoint[action],
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${spotifyToken}`,
         },
       });
   
