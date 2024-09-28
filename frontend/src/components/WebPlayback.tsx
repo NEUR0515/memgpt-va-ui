@@ -57,7 +57,7 @@ const WebPlayback: React.FC<WebPlaybackProps> = ({ token }) => {
 
     window.onSpotifyWebPlaybackSDKReady = () => {
       const player = new window.Spotify.Player({
-        name: 'Spotify Web Player',
+        name: 'Jarvis',
         getOAuthToken: (cb: any) => { cb(token); },
         volume: 0.5,
       });
