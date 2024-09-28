@@ -559,10 +559,9 @@ async def login(request: Request):
 @app.get("/auth/callback")
 async def spotify_callback(request: Request, code: str = Query(...), db: Session = Depends(get_db)):
     token_url = "https://accounts.spotify.com/api/token"
-    
-    # Dynamically determine the protocol (http or https)
+        # Dynamically determine the protocol (http or https)
     protocol = request.url.scheme
-    base_url = str(request.url).split('/auth/login')[0]
+    base_url = str(request.url).split('/auth/callback')[0]
     redirect_uri = f"{protocol}://{base_url}/auth/callback"
 
     body = {
@@ -605,7 +604,7 @@ async def spotify_callback(request: Request, code: str = Query(...), db: Session
         db.commit()
 
         # Redirect back to the frontend with the access token
-        redirect_url = f"{base_url}/frontend?access_token={access_token}"
+        redirect_url = f"{protocol}://{base_url}/frontend?access_token={access_token}"
         return RedirectResponse(url=redirect_url)
 
     else:
