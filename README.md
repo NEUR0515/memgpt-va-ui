@@ -29,6 +29,7 @@ This is J.A.R.V.I.S, a personal AI assistant created using MemGPT and designed t
 - Crawl and summarise websites
 - Interact with Home Assistant and it's devices
 - Spotify Media Player in Frontend
+- Wake up alarm using Spotify
 
 ## Technologies Used
 

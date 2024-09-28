@@ -1,84 +1,48 @@
-import feedparser
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-import logging
-from logging.handlers import RotatingFileHandler
 import os
 from dotenv import load_dotenv
 from typing import List, Dict, Any
 from memgpt.agent import Agent
-import time
+
 # Load environment variables from .env file
 load_dotenv()
 
-# Set up logging
-logger = logging.getLogger('SecurityNewsletter')
-logger.setLevel(logging.DEBUG)
-
-# Create file handler to log to file (rotates after 5MB, keeps 3 backups)
-handler = RotatingFileHandler('security_newsletter.log', maxBytes=5*1024*1024, backupCount=3)
-handler.setLevel(logging.DEBUG)
-
-# Create console handler to log to console
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO)
-
-# Format logging
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-handler.setFormatter(formatter)
-console_handler.setFormatter(formatter)
-
-# Add handlers to logger
-logger.addHandler(handler)
-logger.addHandler(console_handler)
-
-# List of RSS Feeds
-RSS_FEEDS: List[str] = [
-    "https://krebsonsecurity.com/feed/",
-    "https://feeds.feedburner.com/TheHackersNews",
-    "https://feeds.feedburner.com/exploit-db/jAi05Ol6OmB"
-]
-
-# Email Configuration
-EMAIL: str = os.getenv("USER_EMAIL", "")
-PASSWORD: str = os.getenv("USER_PASSWORD", "")
-SMTP_SERVER: str = os.getenv("SMTP_SERVER", "")
-PORT: int = int(os.getenv("SMTP_PORT", "587"))
-RECIPIENTS: List[str] = os.getenv("EMAIL_RECIPIENTS", "").split(",")
-
-# Optional: Define keywords to rank importance
-IMPORTANT_KEYWORDS: List[str] = ['exploit', 'ransomware', 'breach', 'zero-day', 'vulnerability', 'bug', 'hacker', 'cyber', 'attack']
-
-
-def fetch_rss_feeds(self: Agent) -> List[Dict[str, Any]]:
+def fetch_rss_feeds() -> List[Dict[str, Any]]:
     """
     Fetches and parses RSS feeds from the defined URLs.
 
     Returns:
         List[Dict[str, Any]]: A list of parsed entries from the RSS feeds.
     """
-    logger.info("Fetching RSS feeds...")
+    import time
+    import feedparser
+    print("Fetching RSS feeds...")
     all_entries: List[Dict[str, Any]] = []
+
+    # List of RSS Feeds
+    RSS_FEEDS: List[str] = [
+        "https://krebsonsecurity.com/feed/",
+        "https://feeds.feedburner.com/TheHackersNews",
+        "https://feeds.feedburner.com/exploit-db/jAi05Ol6OmB"
+    ]
 
     for feed_url in RSS_FEEDS:
         try:
-            logger.debug(f"Parsing feed: {feed_url}")
+            print(f"Parsing feed: {feed_url}")
             feed = feedparser.parse(feed_url)
             if 'entries' in feed:
                 # Sort entries by date (if available) and limit to top 10
                 sorted_entries = sorted(feed.entries, key=lambda x: x.get('published_parsed', time.gmtime()), reverse=True)[:10]
                 all_entries.extend(sorted_entries)
-                logger.info(f"Fetched and sorted {len(sorted_entries)} entries from {feed_url}")
+                print(f"Fetched and sorted {len(sorted_entries)} entries from {feed_url}")
             else:
-                logger.warning(f"No entries found in feed: {feed_url}")
+                print(f"No entries found in feed: {feed_url}")
         except Exception as e:
-            logger.error(f"Error fetching feed {feed_url}: {str(e)}")
+            print(f"Error fetching feed {feed_url}: {str(e)}")
 
     return all_entries
 
 
-def filter_important_entries(self: Agent, entries: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def filter_important_entries(entries: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     Filters RSS feed entries based on the defined important keywords.
 
@@ -88,7 +52,10 @@ def filter_important_entries(self: Agent, entries: List[Dict[str, Any]]) -> List
     Returns:
         List[Dict[str, Any]]: A list of entries that contain important keywords, limited to top 10.
     """
-    logger.info("Filtering important entries...")
+    # Optional: Define keywords to rank importance
+    IMPORTANT_KEYWORDS: List[str] = ['exploit', 'ransomware', 'breach', 'zero-day', 'vulnerability', 'bug', 'hacker', 'cyber', 'attack']
+
+    print("Filtering important entries...")
     important_entries: List[Dict[str, Any]] = []
 
     for entry in entries:
@@ -96,34 +63,52 @@ def filter_important_entries(self: Agent, entries: List[Dict[str, Any]]) -> List
             important_entries.append(entry)
 
     if not important_entries:
-        logger.warning("No entries matched the importance criteria, using default entries")
+        print("No entries matched the importance criteria, using default entries")
         return entries[:10]
 
     return important_entries[:10]
 
 
-def create_newsletter_content(self: Agent, entries: List[Dict[str, Any]]) -> str:
+def fetch_security_news(self: Agent, entries_json: str) -> str:
     """
     Creates HTML content for the newsletter based on the filtered RSS entries.
 
     Args:
-        entries (List[Dict[str, Any]]): A list of filtered RSS entries.
+        entries_json (str): A JSON string representing the list of filtered RSS entries.
 
     Returns:
         str: The HTML content of the newsletter.
     """
-    logger.info(f"Creating newsletter content from {len(entries)} entries...")
-    newsletter_content = "<h1>Daily Security News</h1><ul>"
-    for entry in entries:
-        try:
-            newsletter_content += f'<li><a href="{entry["link"]}">{entry["title"]}</a> - {entry.get("published", "Unknown date")}</li>'
-        except KeyError as e:
-            logger.warning(f"Key error while processing entry: {e}")
-    newsletter_content += "</ul>"
-    return newsletter_content
+    import json
+    # Deserialize the JSON string back into a list of dictionaries
+    try:
+        # Ensure JSON is parsed into a list of dictionaries
+        entries = json.loads(entries_json)
+        
+        if not isinstance(entries, list):
+            raise ValueError("Expected a list of entries but received a different type.")
+        
+        print(f"Creating newsletter content from {len(entries)} entries...")
+
+        newsletter_content = "<h1>Daily Security News</h1><ul>"
+        for entry in entries:
+            try:
+                # Ensure entry is a dictionary and has the expected keys
+                if isinstance(entry, dict) and "link" in entry and "title" in entry:
+                    newsletter_content += f'<li><a href="{entry["link"]}">{entry["title"]}</a> - {entry.get("published", "Unknown date")}</li>'
+                else:
+                    print(f"Invalid entry structure: {entry}")
+            except KeyError as e:
+                print(f"Key error while processing entry: {e}")
+        newsletter_content += "</ul>"
+        return newsletter_content
+
+    except json.JSONDecodeError:
+        print("Failed to decode JSON string into entries.")
+        return "Error: Invalid JSON input"
 
 
-def send_newsletter(self: Agent, newsletter_content: str) -> str:
+def send_security_newsletter(self: Agent, newsletter_content: str) -> str:
     """
     Sends the newsletter via email to the specified recipients.
 
@@ -133,7 +118,19 @@ def send_newsletter(self: Agent, newsletter_content: str) -> str:
     Returns:
         str: The status of the email send operation.
     """
-    logger.info("Sending the newsletter...")
+    
+    # Email Configuration
+    EMAIL: str = os.getenv("USER_EMAIL", "")
+    PASSWORD: str = os.getenv("USER_PASSWORD", "")
+    SMTP_SERVER: str = os.getenv("SMTP_SERVER", "")
+    PORT: int = int(os.getenv("SMTP_PORT", "587"))
+    RECIPIENTS: List[str] = os.getenv("EMAIL_RECIPIENTS", "").split(",")    
+    
+    import smtplib
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
+    from logging.handlers import RotatingFileHandler
+    print("Sending the newsletter...")
     try:
         msg = MIMEMultipart('alternative')
         msg['Subject'] = "Daily Security Newsletter"
@@ -150,33 +147,9 @@ def send_newsletter(self: Agent, newsletter_content: str) -> str:
         server.login(EMAIL, PASSWORD)
         server.sendmail(EMAIL, RECIPIENTS, msg.as_string())
         server.quit()
-        logger.info("Newsletter sent successfully!")
+        print("Newsletter sent successfully!")
         return "Newsletter sent successfully!"
 
     except smtplib.SMTPException as e:
-        logger.error(f"Error sending email: {str(e)}")
+        print(f"Error sending email: {str(e)}")
         return f"Failed to send newsletter: {str(e)}"
-
-
-def fetch_security_news(self: Agent) -> str:
-    """
-    Fetches the security news from RSS feeds and generates the newsletter content.
-
-    Returns:
-        str: The HTML content of the security newsletter.
-    """
-    entries = self.fetch_rss_feeds()
-    important_entries = self.filter_important_entries(entries)
-    newsletter_content = self.create_newsletter_content(important_entries)
-    return newsletter_content
-
-
-def send_security_newsletter(self: Agent) -> str:
-    """
-    Fetches the security news and sends it as an email newsletter.
-
-    Returns:
-        str: The status of the email send operation.
-    """
-    newsletter_content = self.fetch_security_news()
-    return self.send_newsletter(newsletter_content)

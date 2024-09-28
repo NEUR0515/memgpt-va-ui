@@ -344,7 +344,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(None)):
 
             try:
                 command = message.get('message', '')
-                #print(f"Processing command: {command}")
+                print(f"Processing command")
 
                 if command:
                     if "exit" in command or "stop" in command:
@@ -372,7 +372,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(None)):
                         if assistant_message:
                             await broadcast_message(assistant_message)
                             say(assistant_message)
-                            #print(f"Broadcasted message: {assistant_message}")
+                            print(f"Broadcasted message")
 
             except Exception as e:
                 print(f"Error processing message: {str(e)}")
