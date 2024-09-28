@@ -647,7 +647,28 @@ def refresh_spotify_token():
  # Include the router for authentication-related routes
 app.include_router(auth_router)
 
-def play_spotify_alarm(spotify_token, playlist_uri, track_uri=None):
+def set_spotify_volume(spotify_token, device_id, volume_percent):
+    headers = {
+        "Authorization": f"Bearer {spotify_token}",
+        "Content-Type": "application/json"
+    }
+
+    # Spotify API endpoint to set volume
+    volume_url = "https://api.spotify.com/v1/me/player/volume"
+    params = {
+        "volume_percent": volume_percent,  # Volume level from 0 to 100
+        "device_id": device_id  # Specify the device ID
+    }
+
+    volume_response = requests.put(volume_url, headers=headers, params=params)
+
+    if volume_response.status_code == 204:
+        print(f"Volume set to {volume_percent}% on device {device_id}.")
+    else:
+        print(f"Error setting volume: {volume_response.status_code}, {volume_response.text}")
+
+
+def play_spotify_alarm(spotify_token, playlist_uri, track_uri=None, volume_percent=100):
     headers = {
         "Authorization": f"Bearer {spotify_token}",
         "Content-Type": "application/json"
@@ -673,6 +694,9 @@ def play_spotify_alarm(spotify_token, playlist_uri, track_uri=None):
     else:
         print(f"Error fetching devices: {devices_response.status_code}, {devices_response.text}")
         return
+
+    # Set the volume before starting playback
+    set_spotify_volume(spotify_token, device_id, volume_percent)
 
     # Prepare the data for playback
     play_data = {
@@ -709,7 +733,7 @@ def send_wakeup_message_wrapper():
 
     playlist_uri = "spotify:playlist:42OcQjCTlc8MCDx9f45Div"  # Replace with your playlist URI
     track_uri = "spotify:track:0NFGcFKiEX5Ct5xQ60PbVR"
-    play_spotify_alarm(spotify_token, playlist_uri, track_uri)  # Play the last added song
+    play_spotify_alarm(spotify_token, playlist_uri, track_uri, volume_percent=100)  # Play the last added song
 
 # Define your message sending function
 async def send_wakeup_message():
@@ -721,7 +745,7 @@ async def send_wakeup_message():
 scheduler.start()
 
 # Schedule the wakeup message at 7:00 AM
-scheduler.add_job(send_wakeup_message_wrapper, 'cron', hour=7, minute=0)
+scheduler.add_job(send_wakeup_message_wrapper, 'cron', hour=22, minute=35)
 
 if __name__ == '__main__':
     #try:
