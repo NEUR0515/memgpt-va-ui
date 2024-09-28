@@ -2,15 +2,18 @@ import React, { useState } from 'react';
 import { IconButton, CircularProgress, CircularProgressLabel, Textarea, Box, Flex, Button, useColorModeValue, useBreakpointValue } from '@chakra-ui/react';
 import { ArrowUpIcon, AttachmentIcon, CalendarIcon } from '@chakra-ui/icons';
 import { FiMic } from 'react-icons/fi';
+import { FaSpotify } from 'react-icons/fa'; // Import Spotify Icon
 
 interface MessageInputProps {
   onSendMessage: (message: string) => void;
   audioLevel: number;
   isListening: boolean;
-  setMessages: React.Dispatch<React.SetStateAction<any[]>>;  // Accept setMessages as a prop
+  setMessages: React.Dispatch<React.SetStateAction<any[]>>;
   toggleListening: () => void;
-  toggleLeftPanel: () => void;   // Prop for toggling the left panel
-  toggleRightPanel: () => void;  // Prop for toggling the right panel
+  toggleLeftPanel: () => void;
+  toggleRightPanel: () => void;
+  isSpotifyVisible: boolean;  // Pass the Spotify visibility state
+  setIsSpotifyVisible: React.Dispatch<React.SetStateAction<boolean>>; // Pass the state updater for Spotify
 }
 
 const MessageInput: React.FC<MessageInputProps> = ({
@@ -20,11 +23,12 @@ const MessageInput: React.FC<MessageInputProps> = ({
   isListening,
   toggleListening,
   toggleLeftPanel,
-  toggleRightPanel
+  toggleRightPanel,
+  isSpotifyVisible,
+  setIsSpotifyVisible,
 }) => {
   const [editorContent, setEditorContent] = useState('');
 
-  // Function to handle clearing messages
   const handleClearMessages = (setMessages: React.Dispatch<React.SetStateAction<any[]>>) => {
     setMessages([]);  // Clear messages from UI
     localStorage.removeItem("chatMessages");  // Clear messages from localStorage
@@ -32,20 +36,18 @@ const MessageInput: React.FC<MessageInputProps> = ({
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault(); // Prevent the default behavior of creating a new line
-      onSendMessage(editorContent); // Send the message
-      setEditorContent(''); // Clear the input
+      e.preventDefault();
+      onSendMessage(editorContent);
+      setEditorContent('');
     }
   };
 
-  // Define colors for light/dark mode
   const bgColor = useColorModeValue('gray.100', 'gray.800');
   const textColor = useColorModeValue('gray.800', 'white');
   const buttonBgColor = useColorModeValue('gray.600', 'gray.600');
   const buttonHoverColor = useColorModeValue('gray.500', 'gray.500');
   const sendButtonColor = useColorModeValue('blue.500', 'blue.400');
 
-  // Show only the send and mic buttons on mobile, and all buttons on larger screens
   const showOtherButtons = useBreakpointValue({ base: false, md: true });
 
   return (
@@ -56,16 +58,11 @@ const MessageInput: React.FC<MessageInputProps> = ({
       p={4}
       bg={bgColor}
       color={textColor}
-      borderTop="1px solid"  // Adds a border to separate the input from the chat window
+      borderTop="1px solid"
       borderColor={useColorModeValue('gray.200', 'gray.700')}
-      direction={{ base: 'column', md: 'row' }}  // Stack elements vertically on mobile
+      direction={{ base: 'column', md: 'row' }}
     >
-      <Flex
-        width={{ base: '100%', md: '50%' }}  // Full width on mobile, 50% on larger screens
-        align="center"
-        justify="space-between"
-      >
-        {/* Left Sidebar Toggle Button (Hidden on Mobile) */}
+      <Flex width={{ base: '100%', md: '50%' }} align="center" justify="space-between">
         {showOtherButtons && (
           <IconButton
             icon={<AttachmentIcon />}
@@ -73,15 +70,14 @@ const MessageInput: React.FC<MessageInputProps> = ({
             size="lg"
             bg={buttonBgColor}
             color="white"
-            borderRadius="full"  // Make the button round
+            borderRadius="full"
             _hover={{ bg: buttonHoverColor }}
             w="50px"
             h="50px"
-            onClick={toggleLeftPanel}  // Call the prop function to toggle the left panel
+            onClick={toggleLeftPanel}
           />
         )}
-
-        {/* Clear Messages Button (Hidden on Mobile) */}
+        
         {showOtherButtons && (
           <Flex justify="center" p={4}>
             <Button colorScheme="red" onClick={() => handleClearMessages(setMessages)}>
@@ -90,21 +86,19 @@ const MessageInput: React.FC<MessageInputProps> = ({
           </Flex>
         )}
 
-        {/* Textarea in the center */}
         <Box flex="1" mx={4}>
           <Textarea
-            width="100%"  // Takes full width within its container
+            width="100%"
             value={editorContent}
             onChange={(e) => setEditorContent(e.target.value)}
             placeholder="Type your message here..."
-            onKeyDown={handleKeyDown}  // Handle key presses
-            borderColor={useColorModeValue('gray.300', 'gray.600')}  // Add a border to the textarea
-            _focus={{ borderColor: 'blue.500', outline: 'none' }}  // Focus state for better accessibility
-            mb={{ base: 4, md: 0 }}  // Adds margin on mobile for spacing
+            onKeyDown={handleKeyDown}
+            borderColor={useColorModeValue('gray.300', 'gray.600')}
+            _focus={{ borderColor: 'blue.500', outline: 'none' }}
+            mb={{ base: 4, md: 0 }}
           />
         </Box>
 
-        {/* Send button */}
         <IconButton
           icon={<ArrowUpIcon />}
           aria-label="Send Message"
@@ -115,21 +109,15 @@ const MessageInput: React.FC<MessageInputProps> = ({
           _hover={{ bg: 'blue.400' }}
           w="50px"
           h="50px"
-          mb={{ base: 4, md: 0 }}  // Adds margin on mobile for spacing
+          mb={{ base: 4, md: 0 }}
           onClick={() => {
             onSendMessage(editorContent);
-            setEditorContent('');  // Clear the input after sending the message
+            setEditorContent('');
           }}
         />
 
-        {/* Mic icon with progress */}
         <Box position="relative">
-          <CircularProgress 
-            value={audioLevel} 
-            size="60px" 
-            thickness="4px" 
-            color="blue.500"
-          >
+          <CircularProgress value={audioLevel} size="60px" thickness="4px" color="blue.500">
             <CircularProgressLabel>
               <IconButton
                 aria-label="Microphone"
@@ -140,14 +128,13 @@ const MessageInput: React.FC<MessageInputProps> = ({
                 h={{ base: "40px", md: "50px" }}
                 onClick={toggleListening}
                 color={isListening ? 'red.500' : 'gray.600'}
-                bg={isListening ? 'gray.100' : 'gray.200'}  // Background color to make it stand out
-                _hover={{ bg: isListening ? 'gray.200' : 'gray.300' }}  // Add hover effect
+                bg={isListening ? 'gray.100' : 'gray.200'}
+                _hover={{ bg: isListening ? 'gray.200' : 'gray.300' }}
               />
             </CircularProgressLabel>
           </CircularProgress>
         </Box>
 
-        {/* Right Sidebar Toggle Button (Hidden on Mobile) */}
         {showOtherButtons && (
           <IconButton
             icon={<CalendarIcon />}
@@ -159,7 +146,23 @@ const MessageInput: React.FC<MessageInputProps> = ({
             _hover={{ bg: buttonHoverColor }}
             w="50px"
             h="50px"
-            onClick={toggleRightPanel}  // Call the prop function to toggle the right panel
+            onClick={toggleRightPanel}
+          />
+        )}
+        {/* Spotify Toggle Icon Button */}
+        {showOtherButtons && (
+          <IconButton
+            aria-label="Toggle Spotify Player"
+            icon={<FaSpotify />}
+            size="lg"
+            bg={isSpotifyVisible ? 'teal' : 'gray'}
+            color="white"
+            borderRadius="full"
+            _hover={{ bg: isSpotifyVisible ? 'teal.500' : 'gray.500' }}
+            w="50px"
+            h="50px"
+            ml={2}
+            onClick={() => setIsSpotifyVisible(!isSpotifyVisible)}
           />
         )}
       </Flex>

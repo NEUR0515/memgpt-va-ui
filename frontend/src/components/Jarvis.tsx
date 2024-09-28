@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Flex, Box, useDisclosure, useColorModeValue, useBreakpointValue } from '@chakra-ui/react';
+import { Flex, Box, useDisclosure, useColorModeValue} from '@chakra-ui/react';
 import Header from './Header';
 import FileUploader from './FileUploader';
 import ChatWindow from './ChatWindow';
@@ -10,7 +10,7 @@ import TaskManager from './TaskManager';
 import { Message } from '../types';
 import sanitizeHtml from 'sanitize-html';
 import WebPlayback from './WebPlayback';
-import { useSearchParams, useLocation } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 
 // Declare the types for SpeechRecognition
 declare global {
@@ -53,18 +53,8 @@ function Jarvis() {
 
   const [spotifyToken, setSpotifyToken] = useState('');
   const [searchParams] = useSearchParams();
-  const showSpotifyPlayer = useBreakpointValue({ base: false, md: false, lg: true }); // Hide on mobile (base) and on medium (md)
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 1024); // Detect screen width
+  const [isSpotifyVisible, setIsSpotifyVisible] = useState<boolean>(true); // Manage visibility in Jarvis
 
-  // Update isMobile when the window is resized
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth <= 768);
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   // Check if the access_token is in the URL params
   useEffect(() => {
@@ -383,21 +373,21 @@ useEffect(() => {
         audioLevel={audioLevel}
         isListening={isListening}
         toggleListening={toggleListening}
+        isSpotifyVisible={isSpotifyVisible} // Pass Spotify visibility
+        setIsSpotifyVisible={setIsSpotifyVisible} // Pass state updater
       />
-      {/* Conditionally render the Spotify button based on isMobile */}
-      {!isMobile && showSpotifyPlayer===true &&(
-        <div>
-          {spotifyToken ? (
-            <WebPlayback token={spotifyToken} />
-          ) : (
-            <div style={{ position: 'fixed', bottom: '20px', right: '20px', backgroundColor: '#282828', color: 'white', padding: '10px', borderRadius: '8px' }}>
-              <a className="btn-spotify" href="/auth/login">
-                Login with Spotify
-              </a>
-            </div>
-          )}
-        </div>
-      )}
+    {/* Spotify Component */}
+    {spotifyToken ? (
+      isSpotifyVisible ? (
+        <WebPlayback token={spotifyToken} />
+      ) : null
+    ) : (
+      <div style={{ position: 'fixed', bottom: '20px', right: '20px', backgroundColor: '#282828', color: 'white', padding: '10px', borderRadius: '8px' }}>
+        <a className="btn-spotify" href="/auth/login">
+          Login with Spotify
+        </a>
+      </div>
+    )}
     </Flex>
   );
 }
