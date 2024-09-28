@@ -675,18 +675,13 @@ def play_spotify_alarm(spotify_token, playlist_uri, track_uri=None):
         return
 
     # Prepare the data for playback
-    play_data = {}
-
-    if track_uri:
-        # If a specific track URI is provided, play that track
-        play_data["uris"] = [track_uri]
-    else:
-        # Otherwise, play the playlist starting from the first track
-        play_data["context_uri"] = playlist_uri
+    play_data = {
+        "context_uri": playlist_uri  # Ensure the context is the playlist so it continues playing the rest
+    }
 
     # Optionally add an offset to start from a specific track in the playlist
     if track_uri:
-        play_data["offset"] = {"uri": track_uri}
+        play_data["offset"] = {"uri": track_uri}  # Start from this track, but continue with the playlist
 
     # Now, start playback on the specified device
     play_url = "https://api.spotify.com/v1/me/player/play"
@@ -726,7 +721,7 @@ async def send_wakeup_message():
 scheduler.start()
 
 # Schedule the wakeup message at 7:00 AM
-scheduler.add_job(send_wakeup_message_wrapper, 'cron', hour=7, minute=0)
+scheduler.add_job(send_wakeup_message_wrapper, 'cron', hour=22, minute=23)
 
 if __name__ == '__main__':
     #try:
