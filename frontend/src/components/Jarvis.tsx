@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Flex, Box, useDisclosure, useColorModeValue } from '@chakra-ui/react';
+import { Flex, Box, useDisclosure, useColorModeValue, useBreakpointValue } from '@chakra-ui/react';
 import Header from './Header';
 import FileUploader from './FileUploader';
 import ChatWindow from './ChatWindow';
@@ -53,6 +53,18 @@ function Jarvis() {
 
   const [spotifyToken, setSpotifyToken] = useState('');
   const [searchParams] = useSearchParams();
+  const showSpotifyPlayer = useBreakpointValue({ base: false, md: true }); // Hide on mobile (base), show on medium (md) and up
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768); // Detect screen width
+
+  // Update isMobile when the window is resized
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Check if the access_token is in the URL params
   useEffect(() => {
@@ -372,17 +384,20 @@ useEffect(() => {
         isListening={isListening}
         toggleListening={toggleListening}
       />
-      <div>
-        {spotifyToken ? (
-          <WebPlayback token={spotifyToken} />
-        ) : (
-          <div style={{ position: 'fixed', bottom: '20px', right: '20px', backgroundColor: '#282828', color: 'white', padding: '10px', borderRadius: '8px' }}>
-            <a className="btn-spotify" href="/auth/login">
-              Login with Spotify
-            </a>
-          </div>
-        )}
-      </div>
+      {/* Conditionally render the Spotify button based on isMobile */}
+      {!isMobile && (
+        <div>
+          {spotifyToken ? (
+            <WebPlayback token={spotifyToken} />
+          ) : (
+            <div style={{ position: 'fixed', bottom: '20px', right: '20px', backgroundColor: '#282828', color: 'white', padding: '10px', borderRadius: '8px' }}>
+              <a className="btn-spotify" href="/auth/login">
+                Login with Spotify
+              </a>
+            </div>
+          )}
+        </div>
+      )}
     </Flex>
   );
 }

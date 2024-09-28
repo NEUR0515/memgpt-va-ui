@@ -4,7 +4,7 @@ from os.path import join, dirname, exists
 import ast
 import re
 import requests
-from fastapi import FastAPI, UploadFile, WebSocket, WebSocketDisconnect, HTTPException, Body, Depends, status, Query
+from fastapi import FastAPI, UploadFile, WebSocket, WebSocketDisconnect, HTTPException, Body, Depends, status, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, RedirectResponse
@@ -542,7 +542,7 @@ async def login():
     return RedirectResponse(url=auth_url)
 
 @app.get("/auth/callback")
-async def spotify_callback(code: str = Query(...)):
+async def spotify_callback(request: Request, code: str = Query(...)):
     token_url = "https://accounts.spotify.com/api/token"
     body = {
         "grant_type": "authorization_code",
@@ -560,8 +560,11 @@ async def spotify_callback(code: str = Query(...)):
         token_data = response.json()
         access_token = token_data["access_token"]
 
-        # Redirect the user to the front-end page with the token in URL parameters
-        redirect_url = f"http://localhost:8000/frontend?access_token={access_token}"
+        # Get the base URL from the request (either localhost or external URL)
+        base_url = str(request.base_url)
+        # Construct the redirect URL dynamically
+        redirect_url = f"{base_url}frontend?access_token={access_token}"
+        
         return RedirectResponse(redirect_url)
     else:
         return {"error": "Failed to obtain access token"}
