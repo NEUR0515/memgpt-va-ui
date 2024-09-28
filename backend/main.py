@@ -544,6 +544,8 @@ def play_tts(token: str = Depends(verify_token)):
         # Return a 404 error if the file is not found
         raise HTTPException(status_code=404, detail="File not found")
     
+spotify_token = None  # This will store the Spotify token
+
 @app.get("/auth/login")
 async def login(request: Request):
     scopes = "user-read-private user-read-email streaming user-read-playback-state user-modify-playback-state"
@@ -558,6 +560,7 @@ async def login(request: Request):
 @app.get("/auth/callback")
 async def spotify_callback(request: Request, code: str = Query(...)):
     token_url = "https://accounts.spotify.com/api/token"
+    global spotify_token  # Access the global token variable
     
     # Build the dynamic redirect_uri using the full request URL
     base_url = str(request.url).split('/auth/callback')[0]  # Removes the path part of the current URL
@@ -579,6 +582,15 @@ async def spotify_callback(request: Request, code: str = Query(...)):
     if response.status_code == 200:
         token_data = response.json()
         access_token = token_data["access_token"]
+        refresh_token = token_data.get("refresh_token")  # Get refresh token
+
+        # Store the token globally or in a database for future use
+        spotify_token = access_token
+
+        # Save the refresh token in your environment for future use (e.g., in a file, or database)
+        if refresh_token:
+            with open(".env", "a") as f:
+                f.write(f"\nSPOTIFY_REFRESH_TOKEN={refresh_token}\n")  # Append it on a new line
 
         # Get the base URL from the request (either localhost or external URL)
         base_url = str(request.base_url)
@@ -599,14 +611,112 @@ async def refresh_token(refresh_token: str):
         "client_secret": CLIENT_SECRET,
     }
     token_response = requests.post(TOKEN_URL, data=data)
-    return token_response.json()
+    if token_response.status_code == 200:
+        token_data = token_response.json()
+        global spotify_token
+        spotify_token = token_data.get("access_token")
+        return token_data
+    else:
+        return {"error": "Failed to refresh token"}
+
+def refresh_spotify_token():
+    global spotify_token
+    refresh_token = os.getenv('SPOTIFY_REFRESH_TOKEN')  # Ensure you store the refresh token in your .env file
+
+    if not refresh_token:
+        print("No refresh token available. Cannot refresh the Spotify token.")
+        return
+
+    data = {
+        "grant_type": "refresh_token",
+        "refresh_token": refresh_token,
+        "client_id": CLIENT_ID,
+        "client_secret": CLIENT_SECRET,
+    }
+    
+    token_response = requests.post(TOKEN_URL, data=data)
+
+    if token_response.status_code == 200:
+        token_data = token_response.json()
+        spotify_token = token_data.get("access_token")  # Update global token
+        print("Spotify token successfully refreshed.")
+    else:
+        print(f"Failed to refresh Spotify token: {token_response.status_code}, {token_response.text}")
+
 
  # Include the router for authentication-related routes
 app.include_router(auth_router)
 
+def play_spotify_alarm(spotify_token, playlist_uri):
+    headers = {
+        "Authorization": f"Bearer {spotify_token}",
+        "Content-Type": "application/json"
+    }
+
+    # Extract playlist ID from the URI
+    playlist_id = playlist_uri.split(':')[-1]
+    playlist_url = f"https://api.spotify.com/v1/playlists/{playlist_id}/tracks"
+
+    # Fetch all tracks using pagination
+    offset = 0
+    tracks = []
+
+    while True:
+        playlist_response = requests.get(playlist_url, headers=headers, params={"limit": 100, "offset": offset})
+
+        if playlist_response.status_code == 200:
+            playlist_data = playlist_response.json()
+            tracks.extend(playlist_data['items'])
+
+            if len(playlist_data['items']) < 100:
+                break  # No more tracks to fetch
+
+            offset += 100
+        else:
+            print(f"Error fetching playlist: {playlist_response.status_code}, {playlist_response.text}")
+            return
+
+    if not tracks:
+        print("No tracks found in the playlist.")
+        return
+
+    # Find the most recently added track
+    last_added_track = max(tracks, key=lambda x: x['added_at'])
+
+    # Extract the track URI
+    last_added_track_uri = last_added_track['track']['uri']
+    print(f"Most recently added track URI: {last_added_track_uri}")
+
+    # Now, start playback at the most recently added track
+    play_url = "https://api.spotify.com/v1/me/player/play"
+    play_data = {
+        "uris": [last_added_track_uri]  # Play only this track
+    }
+
+    play_response = requests.put(play_url, headers=headers, json=play_data)
+
+    if play_response.status_code == 204:
+        print(f"Started playing the last added track in the playlist.")
+    else:
+        print(f"Error starting playback: {play_response.status_code}, {play_response.text}")
+
 # Define a wrapper function to call the async function
 def send_wakeup_message_wrapper():
     asyncio.run(send_wakeup_message())  # Run the async function in a synchronous context
+
+    global spotify_token  # Use global spotify_token
+    
+    # Check if the token is available and valid
+    if not spotify_token:
+        print("Spotify token is missing. Attempting to refresh it...")
+        refresh_spotify_token()  # Attempt to refresh the token
+    
+    if not spotify_token:
+        print("Failed to refresh Spotify token. Cannot play the alarm.")
+        return  # Exit if the token is still invalid
+
+    playlist_uri = "spotify:playlist:42OcQjCTlc8MCDx9f45Div"  # Replace with your playlist URI
+    play_spotify_alarm(spotify_token, playlist_uri)  # Play the last added song
 
 # Define your message sending function
 async def send_wakeup_message():
