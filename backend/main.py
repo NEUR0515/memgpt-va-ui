@@ -713,20 +713,20 @@ def send_wakeup_message_wrapper():
         return  # Exit if the token is still invalid
 
     playlist_uri = "spotify:playlist:42OcQjCTlc8MCDx9f45Div"  # Replace with your playlist URI
-    play_spotify_alarm(spotify_token, playlist_uri)  # Play the last added song
+    track_uri = "spotify:track:0NFGcFKiEX5Ct5xQ60PbVR"
+    play_spotify_alarm(spotify_token, playlist_uri, track_uri)  # Play the last added song
 
 # Define your message sending function
 async def send_wakeup_message():
     current_time = datetime.now().strftime("%H:%M:%S")
     message = f"Good morning! The time is {current_time}. Let's start the day!"
-    say(message)  # Use the TTS function to speak the message
     await broadcast_message(message=message)  # Send the message over WebSocket
-
+    say(message)  # Use the TTS function to speak the message
 # Start the scheduler
 scheduler.start()
 
 # Schedule the wakeup message at 7:00 AM
-scheduler.add_job(send_wakeup_message_wrapper, 'cron', hour=22, minute=0)
+scheduler.add_job(send_wakeup_message_wrapper, 'cron', hour=22, minute=8)
 
 if __name__ == '__main__':
     #try:
