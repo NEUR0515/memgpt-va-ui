@@ -53,8 +53,8 @@ function Jarvis() {
 
   const [spotifyToken, setSpotifyToken] = useState('');
   const [searchParams] = useSearchParams();
-  const showSpotifyPlayer = useBreakpointValue({ base: false, md: true }); // Hide on mobile (base), show on medium (md) and up
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768); // Detect screen width
+  const showSpotifyPlayer = useBreakpointValue({ base: false, md: false, lg: true }); // Hide on mobile (base) and on medium (md)
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 1024); // Detect screen width
 
   // Update isMobile when the window is resized
   useEffect(() => {
@@ -385,7 +385,7 @@ useEffect(() => {
         toggleListening={toggleListening}
       />
       {/* Conditionally render the Spotify button based on isMobile */}
-      {!isMobile && (
+      {!isMobile && showSpotifyPlayer===true &&(
         <div>
           {spotifyToken ? (
             <WebPlayback token={spotifyToken} />
