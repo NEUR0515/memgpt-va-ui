@@ -1,0 +1,12 @@
+[Unit]
+Description=Service for starting Jarvis on boot
+After=network.target
+
+[Service]
+Type=idle
+Restart=on-failure
+User=pi
+ExecStart=/bin/bash -c 'cd /home/pi/memgpt-va-ui/backend/ && source .venv/bin/activate && uvicorn main:app --host 0.0.0.0 --port 8000'
+
+[Install]
+WantedBy=multi-user.target
