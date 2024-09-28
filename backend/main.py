@@ -548,9 +548,10 @@ def play_tts(token: str = Depends(verify_token)):
 async def login(request: Request):
     scopes = "user-read-private user-read-email streaming user-read-playback-state user-modify-playback-state"
     
-    # Build the dynamic redirect_uri using the full request URL
-    base_url = str(request.url).split('/auth/login')[0]  # Removes the path part of the current URL
-    redirect_uri = f"{base_url}/auth/callback"
+    # Dynamically determine the protocol (http or https)
+    protocol = request.url.scheme
+    base_url = str(request.url).split('/auth/login')[0]
+    redirect_uri = f"{protocol}://{base_url}/auth/callback"
     
     auth_url = f"{SPOTIFY_AUTH_URL}?response_type=code&client_id={CLIENT_ID}&scope={scopes}&redirect_uri={redirect_uri}"
     return RedirectResponse(url=auth_url)
@@ -559,8 +560,10 @@ async def login(request: Request):
 async def spotify_callback(request: Request, code: str = Query(...), db: Session = Depends(get_db)):
     token_url = "https://accounts.spotify.com/api/token"
     
-    base_url = str(request.url).split('/auth/callback')[0]
-    redirect_uri = f"{base_url}/auth/callback"
+    # Dynamically determine the protocol (http or https)
+    protocol = request.url.scheme
+    base_url = str(request.url).split('/auth/login')[0]
+    redirect_uri = f"{protocol}://{base_url}/auth/callback"
 
     body = {
         "grant_type": "authorization_code",
