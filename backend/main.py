@@ -548,22 +548,21 @@ def play_tts(token: str = Depends(verify_token)):
 async def login(request: Request):
     scopes = "user-read-private user-read-email streaming user-read-playback-state user-modify-playback-state"
     
-    # Dynamically determine the protocol (http or https)
-    protocol = request.url.scheme
-    base_url = str(request.url).replace('http://', '').replace('https://', '').split('/auth/login')[0]  # Remove protocol
-    redirect_uri = f"{protocol}://{base_url}/auth/callback"
+    # Build the dynamic redirect_uri using the full request URL
+    base_url = str(request.url).split('/auth/login')[0]  # Removes the path part of the current URL
+    redirect_uri = f"{base_url}/auth/callback"
     
     auth_url = f"{SPOTIFY_AUTH_URL}?response_type=code&client_id={CLIENT_ID}&scope={scopes}&redirect_uri={redirect_uri}"
     return RedirectResponse(url=auth_url)
+
 
 @app.get("/auth/callback")
 async def spotify_callback(request: Request, code: str = Query(...), db: Session = Depends(get_db)):
     token_url = "https://accounts.spotify.com/api/token"
     
-    # Dynamically determine the protocol (http or https)
-    protocol = request.url.scheme
-    base_url = str(request.url).replace('http://', '').replace('https://', '').split('/auth/callback')[0]  # Remove protocol
-    redirect_uri = f"{protocol}://{base_url}/auth/callback"
+    # Build the dynamic redirect_uri using the full request URL
+    base_url = str(request.url).split('/auth/callback')[0]  # Removes the path part of the current URL
+    redirect_uri = f"{base_url}/auth/callback"
 
     body = {
         "grant_type": "authorization_code",
@@ -587,6 +586,9 @@ async def spotify_callback(request: Request, code: str = Query(...), db: Session
 
         # Store tokens in the database
         user = get_current_user(db, request.cookies.get("token"))
+        token = request.cookies.get("token")
+        if not token:
+            raise HTTPException(status_code=403, detail="Token is missing or invalid")
         spotify_token = db.query(SpotifyToken).filter_by(user_id=user.id).first()
         
         if spotify_token:
@@ -604,9 +606,12 @@ async def spotify_callback(request: Request, code: str = Query(...), db: Session
 
         db.commit()
 
-        # Redirect back to the frontend with the access token
-        redirect_url = f"{protocol}://{base_url}/frontend?access_token={access_token}"
-        return RedirectResponse(url=redirect_url)
+        # Get the base URL from the request (either localhost or external URL)
+        base_url = str(request.base_url)
+        # Construct the redirect URL dynamically
+        redirect_url = f"{base_url}frontend?access_token={access_token}"
+        
+        return RedirectResponse(redirect_url)
 
     else:
         return {"error": "Failed to obtain Spotify access token"}
