@@ -28,10 +28,11 @@ This is J.A.R.V.I.S, a personal AI assistant created using MemGPT and designed t
 - HTTPS and WSS supported
 - Crawl and summarise websites
 - Interact with Home Assistant and it's devices
+- Spotify Media Player in Frontend
 
 ## Technologies Used
 
-- **Backend**: FastAPI, MemGPT, ElevenLabs, Twilio, Git, GoogleAPI's, Firecrawl, Home Assistant
+- **Backend**: FastAPI, MemGPT, ElevenLabs, Twilio, Git, GoogleAPI's, Firecrawl, Spotify
 - **Frontend**: React (hosted statically within FastAPI)
 - **WebSocket**: Secured Websockt connection for real-time communication between frontend and backend
 - **Voice Interaction**: Elevenlabs for text-to-speech synthesis
@@ -64,6 +65,7 @@ Install the Python dependencies:
 
 ```bash
 pip install -r requirements.txt
+pip install bcrypt==3.1.7 # Manually specify bcrypt version to avoid error in logs
 ```
 
 Copy .env-example to .env in the `app/backend` folder and update your credentials:
