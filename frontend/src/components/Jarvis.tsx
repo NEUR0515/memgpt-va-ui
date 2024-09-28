@@ -56,7 +56,6 @@ function Jarvis() {
   const [isSpotifyVisible, setIsSpotifyVisible] = useState<boolean>(true); // Manage visibility in Jarvis
 
 
-  // Check if the access_token is in the URL params
   useEffect(() => {
     const token = searchParams.get('access_token');
     if (token) {
@@ -68,6 +67,22 @@ function Jarvis() {
         setSpotifyToken(storedToken);
       }
     }
+  
+    // Token refresh logic
+    const refreshTokenInterval = setInterval(async () => {
+      try {
+        const response = await fetch("/auth/refresh", { method: "POST" });
+        const data = await response.json();
+        if (data.access_token) {
+          setSpotifyToken(data.access_token);  // Update state with refreshed token
+          localStorage.setItem("spotifyToken", data.access_token); // Save new token
+        }
+      } catch (error) {
+        console.error("Error refreshing token:", error);
+      }
+    }, 55 * 60 * 1000); // Refresh token after 55 minutes
+  
+    return () => clearInterval(refreshTokenInterval);
   }, [searchParams]);
 
   useEffect(() => {

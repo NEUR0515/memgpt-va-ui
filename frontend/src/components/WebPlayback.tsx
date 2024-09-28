@@ -18,6 +18,7 @@ interface SpotifyDevice {
 const WebPlayback: React.FC<WebPlaybackProps> = ({ spotifyToken }) => {
   const [player, setPlayer] = useState<any>(null);
   const [isPaused, setIsPaused] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [currentTrack, setCurrentTrack] = useState({
     name: '',
     artists: [{ name: '' }],
@@ -28,18 +29,17 @@ const WebPlayback: React.FC<WebPlaybackProps> = ({ spotifyToken }) => {
   const [isDevicePickerOpen, setIsDevicePickerOpen] = useState(false);
   const devicePickerRef = useRef<HTMLDivElement>(null); // Assigning the correct type
 
-  // Refresh the token 5 minutes before it expires (tokens are valid for 1 hour)
   useEffect(() => {
     const refreshTokenInterval = setInterval(async () => {
-      const response = await fetch("/auth/refresh", { method: "POST" });
-      const data = await response.json();
-      if (data.access_token) {
-        localStorage.setItem("spotifyToken", data.access_token); // Save new token in localStorage
-      }
+        const response = await fetch("/auth/refresh", { method: "POST" });
+        const data = await response.json();
+        if (data.access_token) {
+            localStorage.setItem("spotifyToken", data.access_token); // Save new token in localStorage
+        }
     }, 55 * 60 * 1000); // Refresh token after 55 minutes
 
     return () => clearInterval(refreshTokenInterval);  // Cleanup
-  }, [spotifyToken]);
+}, [spotifyToken]);
 
   const toggleDevicePicker = async () => {
     setIsDevicePickerOpen(!isDevicePickerOpen);
@@ -128,23 +128,19 @@ const WebPlayback: React.FC<WebPlaybackProps> = ({ spotifyToken }) => {
   }, [spotifyToken]);
 
   const transferPlayback = async (deviceId: string) => {
+    setIsLoading(true);  // Show loading spinner
     try {
-      await axios.put(
-        'https://api.spotify.com/v1/me/player',
-        { device_ids: [deviceId], play: true },
-        {
-          headers: {
-            Authorization: `Bearer ${spotifyToken}`,
-          },
-        }
-      );
-      setSelectedDevice(deviceId);
-      setIsDevicePickerOpen(false);
-      
-      // Fetch the playback state from the new device
-      fetchCurrentPlayback();
+       await axios.put(
+          'https://api.spotify.com/v1/me/player',
+          { device_ids: [deviceId], play: true },
+          { headers: { Authorization: `Bearer ${spotifyToken}` } }
+       );
+       setSelectedDevice(deviceId);
+       fetchCurrentPlayback();
     } catch (error) {
-      console.error('Error transferring playback:', error);
+       console.error("Error switching device:", error);
+    } finally {
+       setIsLoading(false);  // Hide loading spinner
     }
   };
   const fetchCurrentPlayback = async () => {
@@ -254,14 +250,9 @@ const WebPlayback: React.FC<WebPlaybackProps> = ({ spotifyToken }) => {
           {devices.map((device: SpotifyDevice) => (
             <div 
               key={device.id} 
-              style={{ 
-                padding: '5px', 
-                cursor: 'pointer', 
-                color: device.id === selectedDevice ? 'green' : 'white' 
-              }}
-              onClick={() => transferPlayback(device.id)} // Close the picker when a device is selected
-            >
-              {device.name}
+              style={{ padding: '5px', cursor: 'pointer', color: device.id === selectedDevice ? 'green' : 'white' }}
+              onClick={() => transferPlayback(device.id)}>
+              {device.name} {device.is_active && "(Active)"}
             </div>
           ))}
         </div>
