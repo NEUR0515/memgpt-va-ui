@@ -647,7 +647,7 @@ def refresh_spotify_token():
  # Include the router for authentication-related routes
 app.include_router(auth_router)
 
-def play_spotify_alarm(spotify_token, playlist_uri):
+def play_spotify_alarm(spotify_token, playlist_uri, track_uri=None):
     headers = {
         "Authorization": f"Bearer {spotify_token}",
         "Content-Type": "application/json"
@@ -670,62 +670,30 @@ def play_spotify_alarm(spotify_token, playlist_uri):
             else:
                 print("Device named 'Jarvis' not found. Using the first available device.")
                 device_id = devices[0]['id']  # Default to the first device if "Jarvis" is not found
-
     else:
         print(f"Error fetching devices: {devices_response.status_code}, {devices_response.text}")
         return
 
-    # Extract playlist ID from the URI
-    playlist_id = playlist_uri.split(':')[-1]
-    playlist_url = f"https://api.spotify.com/v1/playlists/{playlist_id}/tracks"
+    # Prepare the data for playback
+    play_data = {}
 
-    # Fetch all tracks using pagination
-    offset = 0
-    tracks = []
+    if track_uri:
+        # If a specific track URI is provided, play that track
+        play_data["uris"] = [track_uri]
+    else:
+        # Otherwise, play the playlist starting from the first track
+        play_data["context_uri"] = playlist_uri
 
-    while True:
-        playlist_response = requests.get(playlist_url, headers=headers, params={"limit": 100, "offset": offset})
+    # Optionally add an offset to start from a specific track in the playlist
+    if track_uri:
+        play_data["offset"] = {"uri": track_uri}
 
-        if playlist_response.status_code == 200:
-            playlist_data = playlist_response.json()
-            tracks.extend(playlist_data['items'])
-
-            if len(playlist_data['items']) < 100:
-                break  # No more tracks to fetch
-
-            offset += 100
-        else:
-            print(f"Error fetching playlist: {playlist_response.status_code}, {playlist_response.text}")
-            return
-
-    if not tracks:
-        print("No tracks found in the playlist.")
-        return
-
-    # Find the most recently added track that is playable
-    playable_tracks = [track for track in tracks if 'is_playable' in track['track'] and track['track']['is_playable']]
-    if not playable_tracks:
-        print("No playable tracks found in the playlist.")
-        return
-
-    # Sort by added_at to get the last added track
-    last_added_track = max(playable_tracks, key=lambda x: x['added_at'])
-
-    # Extract the track URI
-    last_added_track_uri = last_added_track['track']['uri']
-    print(f"Most recently added playable track URI: {last_added_track_uri}")
-
-    # Now, start playback at the most recently added track
+    # Now, start playback on the specified device
     play_url = "https://api.spotify.com/v1/me/player/play"
-    play_data = {
-        "uris": [last_added_track_uri]  # Play only this track
-    }
-
-    # Pass the device_id for playback
     play_response = requests.put(play_url, headers=headers, json=play_data, params={"device_id": device_id})
 
     if play_response.status_code == 204:
-        print(f"Started playing the last added track on {jarvis_device['name'] if jarvis_device else devices[0]['name']}.")
+        print(f"Started playing on device {jarvis_device['name'] if jarvis_device else devices[0]['name']}.")
     else:
         print(f"Error starting playback: {play_response.status_code}, {play_response.text}")
 
