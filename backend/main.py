@@ -413,11 +413,20 @@ async def upload_file(file: UploadFile):
         try:
             content_str = content.decode("utf-8")  # Decode the bytes to a string
             print(f"File {filename} decoded as UTF-8")
-            # Process the text content (e.g., insert into memory)
-            client.insert_archival_memory(agent_state.id, content_str)
+
+            # Check if the file is a code file and process it
+            if filename.endswith(('.py', '.js', '.java', '.html', '.css', '.cpp', '.ts')):
+                # Process the file as a code file
+                print(f"Processing code file: {filename}")
+                # Insert into memory or handle code file-specific processing here
+                client.insert_archival_memory(agent_state.id, content_str)
+            else:
+                print(f"File {filename} is not a code file, handling as text.")
+                client.insert_archival_memory(agent_state.id, content_str)
+
         except UnicodeDecodeError:
             print(f"File {filename} could not be decoded as UTF-8, handling as binary.")
-            
+
             # Handle binary files (PDFs)
             if filename.endswith(".pdf"):
                 try:
