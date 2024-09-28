@@ -543,14 +543,14 @@ def play_tts(token: str = Depends(verify_token)):
     else:
         # Return a 404 error if the file is not found
         raise HTTPException(status_code=404, detail="File not found")
-    
+
 @app.get("/auth/login")
 async def login(request: Request):
     scopes = "user-read-private user-read-email streaming user-read-playback-state user-modify-playback-state"
     
     # Dynamically determine the protocol (http or https)
     protocol = request.url.scheme
-    base_url = str(request.url).split('/auth/login')[0]
+    base_url = str(request.url).replace('http://', '').replace('https://', '').split('/auth/login')[0]  # Remove protocol
     redirect_uri = f"{protocol}://{base_url}/auth/callback"
     
     auth_url = f"{SPOTIFY_AUTH_URL}?response_type=code&client_id={CLIENT_ID}&scope={scopes}&redirect_uri={redirect_uri}"
@@ -559,9 +559,10 @@ async def login(request: Request):
 @app.get("/auth/callback")
 async def spotify_callback(request: Request, code: str = Query(...), db: Session = Depends(get_db)):
     token_url = "https://accounts.spotify.com/api/token"
-        # Dynamically determine the protocol (http or https)
+    
+    # Dynamically determine the protocol (http or https)
     protocol = request.url.scheme
-    base_url = str(request.url).split('/auth/callback')[0]
+    base_url = str(request.url).replace('http://', '').replace('https://', '').split('/auth/callback')[0]  # Remove protocol
     redirect_uri = f"{protocol}://{base_url}/auth/callback"
 
     body = {
