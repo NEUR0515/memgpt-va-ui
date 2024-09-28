@@ -536,9 +536,13 @@ def play_tts(token: str = Depends(verify_token)):
         raise HTTPException(status_code=404, detail="File not found")
     
 @app.get("/auth/login")
-async def login():
+async def login(request: Request):
     scopes = "user-read-private user-read-email streaming user-read-playback-state user-modify-playback-state"
-    auth_url = f"{SPOTIFY_AUTH_URL}?response_type=code&client_id={CLIENT_ID}&scope={scopes}&redirect_uri={REDIRECT_URI}"
+    
+    # Dynamically build the redirect_uri using the request object
+    redirect_uri = f"{request.url.scheme}://{request.client.host}/auth/callback"
+    
+    auth_url = f"{SPOTIFY_AUTH_URL}?response_type=code&client_id={CLIENT_ID}&scope={scopes}&redirect_uri={redirect_uri}"
     return RedirectResponse(url=auth_url)
 
 @app.get("/auth/callback")
