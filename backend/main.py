@@ -653,6 +653,28 @@ def play_spotify_alarm(spotify_token, playlist_uri):
         "Content-Type": "application/json"
     }
 
+    # Get available devices
+    devices_response = requests.get("https://api.spotify.com/v1/me/player/devices", headers=headers)
+
+    if devices_response.status_code == 200:
+        devices = devices_response.json()["devices"]
+        if not devices:
+            print("No active devices found.")
+            return
+        else:
+            # Check for a device named "Jarvis"
+            jarvis_device = next((device for device in devices if device['name'] == 'Jarvis'), None)
+            if jarvis_device:
+                device_id = jarvis_device['id']
+                print(f"Using device: {jarvis_device['name']}")
+            else:
+                print("Device named 'Jarvis' not found. Using the first available device.")
+                device_id = devices[0]['id']  # Default to the first device if "Jarvis" is not found
+
+    else:
+        print(f"Error fetching devices: {devices_response.status_code}, {devices_response.text}")
+        return
+
     # Extract playlist ID from the URI
     playlist_id = playlist_uri.split(':')[-1]
     playlist_url = f"https://api.spotify.com/v1/playlists/{playlist_id}/tracks"
@@ -680,12 +702,18 @@ def play_spotify_alarm(spotify_token, playlist_uri):
         print("No tracks found in the playlist.")
         return
 
-    # Find the most recently added track
-    last_added_track = max(tracks, key=lambda x: x['added_at'])
+    # Find the most recently added track that is playable
+    playable_tracks = [track for track in tracks if track['track']['is_playable']]
+    if not playable_tracks:
+        print("No playable tracks found in the playlist.")
+        return
+
+    # Sort by added_at to get the last added track
+    last_added_track = max(playable_tracks, key=lambda x: x['added_at'])
 
     # Extract the track URI
     last_added_track_uri = last_added_track['track']['uri']
-    print(f"Most recently added track URI: {last_added_track_uri}")
+    print(f"Most recently added playable track URI: {last_added_track_uri}")
 
     # Now, start playback at the most recently added track
     play_url = "https://api.spotify.com/v1/me/player/play"
@@ -693,10 +721,11 @@ def play_spotify_alarm(spotify_token, playlist_uri):
         "uris": [last_added_track_uri]  # Play only this track
     }
 
-    play_response = requests.put(play_url, headers=headers, json=play_data)
+    # Pass the device_id for playback
+    play_response = requests.put(play_url, headers=headers, json=play_data, params={"device_id": device_id})
 
     if play_response.status_code == 204:
-        print(f"Started playing the last added track in the playlist.")
+        print(f"Started playing the last added track on {jarvis_device['name'] if jarvis_device else devices[0]['name']}.")
     else:
         print(f"Error starting playback: {play_response.status_code}, {play_response.text}")
 
