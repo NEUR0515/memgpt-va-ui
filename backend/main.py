@@ -539,8 +539,9 @@ def play_tts(token: str = Depends(verify_token)):
 async def login(request: Request):
     scopes = "user-read-private user-read-email streaming user-read-playback-state user-modify-playback-state"
     
-    # Dynamically build the redirect_uri using the request object
-    redirect_uri = f"{request.url.scheme}://{request.client.host}/auth/callback"
+    # Build the dynamic redirect_uri using the full request URL
+    base_url = str(request.url).split('/auth/login')[0]  # Removes the path part of the current URL
+    redirect_uri = f"{base_url}/auth/callback"
     
     auth_url = f"{SPOTIFY_AUTH_URL}?response_type=code&client_id={CLIENT_ID}&scope={scopes}&redirect_uri={redirect_uri}"
     return RedirectResponse(url=auth_url)
@@ -548,13 +549,19 @@ async def login(request: Request):
 @app.get("/auth/callback")
 async def spotify_callback(request: Request, code: str = Query(...)):
     token_url = "https://accounts.spotify.com/api/token"
+    
+    # Build the dynamic redirect_uri using the full request URL
+    base_url = str(request.url).split('/auth/callback')[0]  # Removes the path part of the current URL
+    redirect_uri = f"{base_url}/auth/callback"
+
     body = {
         "grant_type": "authorization_code",
         "code": code,
-        "redirect_uri": REDIRECT_URI,
+        "redirect_uri": redirect_uri,  # Use the dynamically generated redirect URI
         "client_id": CLIENT_ID,
         "client_secret": CLIENT_SECRET,
     }
+    
     headers = {
         "Content-Type": "application/x-www-form-urlencoded"
     }
