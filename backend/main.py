@@ -703,7 +703,7 @@ def play_spotify_alarm(spotify_token, playlist_uri):
         return
 
     # Find the most recently added track that is playable
-    playable_tracks = [track for track in tracks if track['track']['is_playable']]
+    playable_tracks = [track for track in tracks if 'is_playable' in track['track'] and track['track']['is_playable']]
     if not playable_tracks:
         print("No playable tracks found in the playlist.")
         return
@@ -758,7 +758,7 @@ async def send_wakeup_message():
 scheduler.start()
 
 # Schedule the wakeup message at 7:00 AM
-scheduler.add_job(send_wakeup_message_wrapper, 'cron', hour=7, minute=0)
+scheduler.add_job(send_wakeup_message_wrapper, 'cron', hour=21, minute=50)
 
 if __name__ == '__main__':
     #try:
