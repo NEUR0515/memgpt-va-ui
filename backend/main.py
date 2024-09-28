@@ -25,7 +25,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from datetime import datetime, timedelta, timezone
 from passlib.context import CryptContext
-from models import User, SpotifyToken
+from models import User
 from database import SessionLocal, engine
 from pydantic import BaseModel, HttpUrl
 from fastapi.middleware.cors import CORSMiddleware
@@ -543,7 +543,7 @@ def play_tts(token: str = Depends(verify_token)):
     else:
         # Return a 404 error if the file is not found
         raise HTTPException(status_code=404, detail="File not found")
-
+    
 @app.get("/auth/login")
 async def login(request: Request):
     scopes = "user-read-private user-read-email streaming user-read-playback-state user-modify-playback-state"
@@ -555,9 +555,8 @@ async def login(request: Request):
     auth_url = f"{SPOTIFY_AUTH_URL}?response_type=code&client_id={CLIENT_ID}&scope={scopes}&redirect_uri={redirect_uri}"
     return RedirectResponse(url=auth_url)
 
-
 @app.get("/auth/callback")
-async def spotify_callback(request: Request, code: str = Query(...), db: Session = Depends(get_db)):
+async def spotify_callback(request: Request, code: str = Query(...)):
     token_url = "https://accounts.spotify.com/api/token"
     
     # Build the dynamic redirect_uri using the full request URL
@@ -567,11 +566,11 @@ async def spotify_callback(request: Request, code: str = Query(...), db: Session
     body = {
         "grant_type": "authorization_code",
         "code": code,
-        "redirect_uri": redirect_uri,
+        "redirect_uri": redirect_uri,  # Use the dynamically generated redirect URI
         "client_id": CLIENT_ID,
         "client_secret": CLIENT_SECRET,
     }
-
+    
     headers = {
         "Content-Type": "application/x-www-form-urlencoded"
     }
@@ -580,31 +579,6 @@ async def spotify_callback(request: Request, code: str = Query(...), db: Session
     if response.status_code == 200:
         token_data = response.json()
         access_token = token_data["access_token"]
-        refresh_token = token_data["refresh_token"]
-        expires_in = token_data["expires_in"]
-        expires_at = datetime.now() + timedelta(seconds=expires_in)
-
-        # Store tokens in the database
-        user = get_current_user(db, request.cookies.get("token"))
-        token = request.cookies.get("token")
-        if not token:
-            raise HTTPException(status_code=403, detail="Token is missing or invalid")
-        spotify_token = db.query(SpotifyToken).filter_by(user_id=user.id).first()
-        
-        if spotify_token:
-            spotify_token.access_token = access_token
-            spotify_token.refresh_token = refresh_token
-            spotify_token.expires_at = expires_at
-        else:
-            spotify_token = SpotifyToken(
-                user_id=user.id,
-                access_token=access_token,
-                refresh_token=refresh_token,
-                expires_at=expires_at
-            )
-            db.add(spotify_token)
-
-        db.commit()
 
         # Get the base URL from the request (either localhost or external URL)
         base_url = str(request.base_url)
@@ -612,9 +586,8 @@ async def spotify_callback(request: Request, code: str = Query(...), db: Session
         redirect_url = f"{base_url}frontend?access_token={access_token}"
         
         return RedirectResponse(redirect_url)
-
     else:
-        return {"error": "Failed to obtain Spotify access token"}
+        return {"error": "Failed to obtain access token"}
 
 # Refresh Token Endpoint (optional)
 @app.get("/auth/refresh")
