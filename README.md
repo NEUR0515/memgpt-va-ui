@@ -15,7 +15,7 @@ This is J.A.R.V.I.S, a personal AI assistant created using MemGPT and designed t
 
 ## Features
 
-- Realitic and customisable Text-To-Speech using Elevenlabs.
+- Realistic and customisable Text-To-Speech using Elevenlabs.
 - Thought messages visually distinct from other messages.
 - Markdown support and code linting for messages, including bullet points and formatting.
 - SMS messaging integration using Twilio (Currently send only) (WIP).
@@ -35,7 +35,7 @@ This is J.A.R.V.I.S, a personal AI assistant created using MemGPT and designed t
 
 - **Backend**: FastAPI, MemGPT, ElevenLabs, Twilio, Git, GoogleAPI's, Firecrawl, Spotify
 - **Frontend**: React (hosted statically within FastAPI)
-- **WebSocket**: Secured Websockt connection for real-time communication between frontend and backend
+- **WebSocket**: Secured Websocket connection for real-time communication between frontend and backend
 - **Voice Interaction**: Elevenlabs for text-to-speech synthesis
 
 ## Installation
