@@ -19,8 +19,8 @@ def list_upcoming_events(self: Agent, max_results: int = 10) -> str:
     import pytz
 
     def get_calendar_service():
-        TOKEN_PATH = os.path.expanduser("~/.memgpt/gcal_token.json")
-        CREDENTIALS_PATH = os.path.expanduser("~/.memgpt/google_api_credentials.json")
+        TOKEN_PATH = os.path.join('..', 'backend', 'gcal_token.json')
+        CREDENTIALS_PATH = os.path.join('..', 'backend', 'google_api_credentials.json')
         SCOPES = ["https://www.googleapis.com/auth/calendar"]
         
         creds = None

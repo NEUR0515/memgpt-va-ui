@@ -20,8 +20,8 @@ def schedule_event(self: Agent, title: str, start: str, end: str, description: s
     from googleapiclient.discovery import build
     import os
     def get_calendar_service():
-        TOKEN_PATH = os.path.expanduser("~/.memgpt/gcal_token.json")
-        CREDENTIALS_PATH = os.path.expanduser("~/.memgpt/google_api_credentials.json")
+        TOKEN_PATH = os.path.join('..', 'backend', 'gcal_token.json')
+        CREDENTIALS_PATH = os.path.join('..', 'backend', 'google_api_credentials.json')
         SCOPES = ["https://www.googleapis.com/auth/calendar"]
         
         creds = None

@@ -77,10 +77,8 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 720 # (12 Hours)
 
 CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID')
 CLIENT_SECRET = os.getenv('SPOTIFY_CLIENT_SECRET')
-REDIRECT_URI = "http://localhost:8000/auth/callback"
 SPOTIFY_AUTH_URL = "https://accounts.spotify.com/authorize"
 TOKEN_URL = "https://accounts.spotify.com/api/token"
-SCOPES = "user-read-private user-read-email streaming"
 
 # Initialize the client and create tools
 client = create_client()
