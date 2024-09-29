@@ -119,6 +119,16 @@ The app uses Elevenlabs for TTS
 
 To use Google Services you need to set up a Google Cloud Platform account and follow the instructions here: [MemGPT Assistant Example](https://github.com/cpacker/MemGPT/blob/main/examples/personal_assistant_demo/README.md)
 
+## Example Use Case
+
+Here's an example of how you can use the application: [Example Workflow](./ExampleWorkflow.md)
+
+<div style="display: flex; flex-wrap: wrap;">
+  <img src="./assets/ExampleWorkflow1.png" alt="Image 1" style="width: 30%; margin-right: 10px;"/>
+  <img src="./assets/ExampleWorkflow2.png" alt="Image 2" style="width: 30%; margin-right: 10px;"/>
+  <img src="./assets/ExampleWorkflow3.png" alt="Image 3" style="width: 30%;"/>
+</div>
+
 ## Contact
 
 For any issues or suggestions, feel free to open an issue in the repository or contact me via email.
