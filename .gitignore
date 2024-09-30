@@ -15,3 +15,4 @@ dist/
 tasks.json
 *.db
 credentials
+app.log
