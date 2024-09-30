@@ -31,17 +31,14 @@ const Login = () => {
     try {
       const response = await fetch('/token', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
         body: formDetails,
+        credentials: 'include', // Include cookies in the request
       });
 
       setLoading(false);
 
       if (response.ok) {
-        const data = await response.json();
-        localStorage.setItem('token', data.access_token);
+        // No need to handle token here, it's stored in HttpOnly cookie
         navigate('/frontend');
       } else {
         const errorData = await response.json();
@@ -100,7 +97,11 @@ const Login = () => {
             </Button>
           </VStack>
         </form>
-        {error && <Text color="red.500" mt={4}>{error}</Text>}
+        {error && (
+          <Text color="red.500" mt={4}>
+            {error}
+          </Text>
+        )}
         <Text mt={4} color="gray.300">
           Don't have an account?{' '}
           <Link to="/register">

@@ -1,22 +1,39 @@
 import os
 from dotenv import load_dotenv
-from typing import List, Dict, Any
+from typing import List, Optional
+from pydantic import BaseModel
+import datetime
 from memgpt.agent import Agent
 
 # Load environment variables from .env file
-load_dotenv()
+dotenv_path = os.path.join('..', '.env')
+load_dotenv(dotenv_path)
 
-def fetch_rss_feeds() -> List[Dict[str, Any]]:
+# Email Configuration
+EMAIL: str = os.getenv("USER_EMAIL", "")
+PASSWORD: str = os.getenv("USER_PASSWORD", "")
+SMTP_SERVER: str = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+PORT: int = int(os.getenv("SMTP_PORT", "587"))
+RECIPIENTS: List[str] = os.getenv("EMAIL_RECIPIENTS", "").split(",")
+
+class FeedEntry(BaseModel):
+    title: str
+    link: str
+    published: Optional[str] = None
+    summary: Optional[str] = None
+    # Include other fields you expect to use
+
+def fetch_rss_feeds() -> List[FeedEntry]:
     """
     Fetches and parses RSS feeds from the defined URLs.
 
     Returns:
-        List[Dict[str, Any]]: A list of parsed entries from the RSS feeds.
+        List[FeedEntry]: A list of parsed entries from the RSS feeds.
     """
     import time
     import feedparser
     print("Fetching RSS feeds...")
-    all_entries: List[Dict[str, Any]] = []
+    all_entries: List[FeedEntry] = []
 
     # List of RSS Feeds
     RSS_FEEDS: List[str] = [
@@ -31,9 +48,15 @@ def fetch_rss_feeds() -> List[Dict[str, Any]]:
             feed = feedparser.parse(feed_url)
             if 'entries' in feed:
                 # Sort entries by date (if available) and limit to top 10
-                sorted_entries = sorted(feed.entries, key=lambda x: x.get('published_parsed', time.gmtime()), reverse=True)[:10]
-                all_entries.extend(sorted_entries)
-                print(f"Fetched and sorted {len(sorted_entries)} entries from {feed_url}")
+                sorted_entries = sorted(
+                    feed.entries,
+                    key=lambda x: x.get('published_parsed', time.gmtime()),
+                    reverse=True
+                )[:10]
+                # Convert entries to FeedEntry models
+                feed_entries = [FeedEntry(**entry) for entry in sorted_entries]
+                all_entries.extend(feed_entries)
+                print(f"Fetched and sorted {len(feed_entries)} entries from {feed_url}")
             else:
                 print(f"No entries found in feed: {feed_url}")
         except Exception as e:
@@ -41,25 +64,27 @@ def fetch_rss_feeds() -> List[Dict[str, Any]]:
 
     return all_entries
 
-
-def filter_important_entries(entries: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def filter_important_entries(entries: List[FeedEntry]) -> List[FeedEntry]:
     """
     Filters RSS feed entries based on the defined important keywords.
 
     Args:
-        entries (List[Dict[str, Any]]): A list of parsed RSS entries.
+        entries (List[FeedEntry]): A list of parsed RSS entries.
 
     Returns:
-        List[Dict[str, Any]]: A list of entries that contain important keywords, limited to top 10.
+        List[FeedEntry]: A list of entries that contain important keywords, limited to top 10.
     """
-    # Optional: Define keywords to rank importance
-    IMPORTANT_KEYWORDS: List[str] = ['exploit', 'ransomware', 'breach', 'zero-day', 'vulnerability', 'bug', 'hacker', 'cyber', 'attack']
+    # Define keywords to rank importance
+    IMPORTANT_KEYWORDS: List[str] = [
+        'exploit', 'ransomware', 'breach', 'zero-day',
+        'vulnerability', 'bug', 'hacker', 'cyber', 'attack'
+    ]
 
     print("Filtering important entries...")
-    important_entries: List[Dict[str, Any]] = []
+    important_entries: List[FeedEntry] = []
 
     for entry in entries:
-        if any(keyword.lower() in (entry.get('title', '').lower() or '') for keyword in IMPORTANT_KEYWORDS):
+        if any(keyword.lower() in (entry.title.lower() or '') for keyword in IMPORTANT_KEYWORDS):
             important_entries.append(entry)
 
     if not important_entries:
@@ -68,88 +93,38 @@ def filter_important_entries(entries: List[Dict[str, Any]]) -> List[Dict[str, An
 
     return important_entries[:10]
 
-
-def fetch_security_news(self: Agent, entries_json: str) -> str:
+def create_newsletter_content(entries: List[FeedEntry]) -> str:
     """
     Creates HTML content for the newsletter based on the filtered RSS entries.
 
     Args:
-        entries_json (str): A JSON string representing the list of filtered RSS entries.
+        entries (List[FeedEntry]): A list of filtered RSS entries.
 
     Returns:
         str: The HTML content of the newsletter.
     """
-    import json
-    # Deserialize the JSON string back into a list of dictionaries
-    try:
-        # Ensure JSON is parsed into a list of dictionaries
-        entries = json.loads(entries_json)
-        
-        if not isinstance(entries, list):
-            raise ValueError("Expected a list of entries but received a different type.")
-        
-        print(f"Creating newsletter content from {len(entries)} entries...")
+    print(f"Creating newsletter content from {len(entries)} entries...")
 
-        newsletter_content = "<h1>Daily Security News</h1><ul>"
-        for entry in entries:
-            try:
-                # Ensure entry is a dictionary and has the expected keys
-                if isinstance(entry, dict) and "link" in entry and "title" in entry:
-                    newsletter_content += f'<li><a href="{entry["link"]}">{entry["title"]}</a> - {entry.get("published", "Unknown date")}</li>'
-                else:
-                    print(f"Invalid entry structure: {entry}")
-            except KeyError as e:
-                print(f"Key error while processing entry: {e}")
-        newsletter_content += "</ul>"
-        return newsletter_content
+    newsletter_content = "<h1>Daily Security News</h1><ul>"
+    for entry in entries:
+        try:
+            newsletter_content += f'<li><a href="{entry.link}">{entry.title}</a> - {entry.published or "Unknown date"}</li>'
+        except Exception as e:
+            print(f"Error while processing entry: {e}")
+    newsletter_content += "</ul>"
+    return newsletter_content
 
-    except json.JSONDecodeError:
-        print("Failed to decode JSON string into entries.")
-        return "Error: Invalid JSON input"
-
-
-def send_security_newsletter(self: Agent, newsletter_content: str) -> str:
+def fetch_security_newsletter(self: Agent) -> str:
     """
-    Sends the newsletter via email to the specified recipients.
-
-    Args:
-        newsletter_content (str): The HTML content of the newsletter.
+    Fetches and formats the security newsletter content.
 
     Returns:
-        str: The status of the email send operation.
+        str: The HTML content of the newsletter.
     """
-    
-    # Email Configuration
-    EMAIL: str = os.getenv("USER_EMAIL", "")
-    PASSWORD: str = os.getenv("USER_PASSWORD", "")
-    SMTP_SERVER: str = os.getenv("SMTP_SERVER", "")
-    PORT: int = int(os.getenv("SMTP_PORT", "587"))
-    RECIPIENTS: List[str] = os.getenv("EMAIL_RECIPIENTS", "").split(",")    
-    
-    import smtplib
-    from email.mime.multipart import MIMEMultipart
-    from email.mime.text import MIMEText
-    from logging.handlers import RotatingFileHandler
-    print("Sending the newsletter...")
-    try:
-        msg = MIMEMultipart('alternative')
-        msg['Subject'] = "Daily Security Newsletter"
-        msg['From'] = EMAIL
-        msg['To'] = ", ".join(RECIPIENTS)
+    entries = fetch_rss_feeds()
+    filtered_entries = filter_important_entries(entries)
+    newsletter_content = create_newsletter_content(filtered_entries)
+    return newsletter_content
 
-        # Attach the newsletter content as HTML
-        html_part = MIMEText(newsletter_content, 'html')
-        msg.attach(html_part)
-
-        # Send the email
-        server = smtplib.SMTP(SMTP_SERVER, PORT)
-        server.starttls()
-        server.login(EMAIL, PASSWORD)
-        server.sendmail(EMAIL, RECIPIENTS, msg.as_string())
-        server.quit()
-        print("Newsletter sent successfully!")
-        return "Newsletter sent successfully!"
-
-    except smtplib.SMTPException as e:
-        print(f"Error sending email: {str(e)}")
-        return f"Failed to send newsletter: {str(e)}"
+# Fetch the newsletter content
+# print(fetch_security_newsletter())

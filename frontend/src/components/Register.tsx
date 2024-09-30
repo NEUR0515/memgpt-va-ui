@@ -1,6 +1,19 @@
 import React, { useState } from 'react';
-import { Box, Input, Button, VStack, FormControl, FormLabel, Heading, Alert, AlertIcon, Spinner, Text, IconButton } from '@chakra-ui/react';
-import { CloseIcon } from '@chakra-ui/icons';  // Import the close icon
+import {
+  Box,
+  Input,
+  Button,
+  VStack,
+  FormControl,
+  FormLabel,
+  Heading,
+  Alert,
+  AlertIcon,
+  Spinner,
+  Text,
+  IconButton,
+} from '@chakra-ui/react';
+import { CloseIcon } from '@chakra-ui/icons'; // Import the close icon
 import { Link, useNavigate } from 'react-router-dom';
 
 const Register: React.FC = () => {
@@ -10,7 +23,7 @@ const Register: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [profilePicture, setProfilePicture] = useState('');  // Optional profile picture URL
+  const [profilePicture, setProfilePicture] = useState(''); // Optional profile picture URL
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
@@ -25,6 +38,7 @@ const Register: React.FC = () => {
       setError('Passwords do not match');
       return false;
     }
+    // Optionally, add more validation (e.g., email format)
     setError('');
     return true;
   };
@@ -40,7 +54,7 @@ const Register: React.FC = () => {
       first_name: firstName,
       last_name: lastName,
       email: email,
-      profile_picture: profilePicture || null,  // Optional profile picture
+      profile_picture: profilePicture || null, // Optional profile picture
     };
 
     try {
@@ -50,13 +64,18 @@ const Register: React.FC = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(userDetails),
+        credentials: 'include', // Include cookies in the request if necessary
       });
 
       setLoading(false);
 
       if (response.ok) {
-        setSuccess('Registration successful!');
-        navigate('/');  // Redirect to login page after successful registration
+        setSuccess('Registration successful! Redirecting to login...');
+        // Optionally, you can automatically log the user in here if the backend sets the cookie
+        // For now, we'll navigate to the login page after a short delay
+        setTimeout(() => {
+          navigate('/login');
+        }, 2000); // 2-second delay for user to read the success message
       } else {
         const errorData = await response.json();
         setError(errorData.detail || 'Registration failed');
@@ -68,7 +87,14 @@ const Register: React.FC = () => {
   };
 
   return (
-    <Box height="100vh" display="flex" alignItems="center" justifyContent="center" bg="gray.900" position="relative">
+    <Box
+      height="100vh"
+      display="flex"
+      alignItems="center"
+      justifyContent="center"
+      bg="gray.900"
+      position="relative"
+    >
       <Box width="400px" p={6} bg="gray.700" borderRadius="md" boxShadow="lg">
         {/* Close button */}
         <IconButton
@@ -77,10 +103,14 @@ const Register: React.FC = () => {
           position="absolute"
           top="10px"
           right="10px"
-          onClick={() => navigate('/frontend')}  // Navigate back to the frontend
+          onClick={() => navigate('/frontend')} // Navigate back to the frontend
+          variant="ghost"
+          colorScheme="whiteAlpha"
         />
 
-        <Heading mb={6} color="white" textAlign="center">Register</Heading>
+        <Heading mb={6} color="white" textAlign="center">
+          Register
+        </Heading>
 
         {error && (
           <Alert status="error" mb={4}>
@@ -97,7 +127,7 @@ const Register: React.FC = () => {
 
         <form onSubmit={handleSubmit}>
           <VStack spacing={4}>
-            <FormControl id="firstName">
+            <FormControl id="firstName" isRequired>
               <FormLabel color="gray.300">First Name</FormLabel>
               <Input
                 value={firstName}
@@ -105,10 +135,11 @@ const Register: React.FC = () => {
                 placeholder="Enter your first name"
                 bg="gray.600"
                 color="white"
+                _placeholder={{ color: 'gray.400' }}
               />
             </FormControl>
 
-            <FormControl id="lastName">
+            <FormControl id="lastName" isRequired>
               <FormLabel color="gray.300">Last Name</FormLabel>
               <Input
                 value={lastName}
@@ -116,10 +147,11 @@ const Register: React.FC = () => {
                 placeholder="Enter your last name"
                 bg="gray.600"
                 color="white"
+                _placeholder={{ color: 'gray.400' }}
               />
             </FormControl>
 
-            <FormControl id="email">
+            <FormControl id="email" isRequired>
               <FormLabel color="gray.300">Email</FormLabel>
               <Input
                 type="email"
@@ -128,10 +160,11 @@ const Register: React.FC = () => {
                 placeholder="Enter your email"
                 bg="gray.600"
                 color="white"
+                _placeholder={{ color: 'gray.400' }}
               />
             </FormControl>
 
-            <FormControl id="username">
+            <FormControl id="username" isRequired>
               <FormLabel color="gray.300">Username</FormLabel>
               <Input
                 value={username}
@@ -139,10 +172,11 @@ const Register: React.FC = () => {
                 placeholder="Enter your username"
                 bg="gray.600"
                 color="white"
+                _placeholder={{ color: 'gray.400' }}
               />
             </FormControl>
 
-            <FormControl id="password">
+            <FormControl id="password" isRequired>
               <FormLabel color="gray.300">Password</FormLabel>
               <Input
                 type="password"
@@ -151,10 +185,11 @@ const Register: React.FC = () => {
                 placeholder="Enter your password"
                 bg="gray.600"
                 color="white"
+                _placeholder={{ color: 'gray.400' }}
               />
             </FormControl>
 
-            <FormControl id="confirmPassword">
+            <FormControl id="confirmPassword" isRequired>
               <FormLabel color="gray.300">Confirm Password</FormLabel>
               <Input
                 type="password"
@@ -163,6 +198,7 @@ const Register: React.FC = () => {
                 placeholder="Confirm your password"
                 bg="gray.600"
                 color="white"
+                _placeholder={{ color: 'gray.400' }}
               />
             </FormControl>
 
@@ -174,16 +210,23 @@ const Register: React.FC = () => {
                 placeholder="Enter profile picture URL"
                 bg="gray.600"
                 color="white"
+                _placeholder={{ color: 'gray.400' }}
               />
             </FormControl>
 
-            <Button type="submit" colorScheme="blue" width="full" disabled={loading}>
-              {loading ? <Spinner size="sm" /> : 'Register'}
+            <Button
+              type="submit"
+              colorScheme="blue"
+              width="full"
+              isLoading={loading}
+              loadingText="Registering"
+            >
+              Register
             </Button>
           </VStack>
         </form>
-        {error && <Text color="red.500" mt={4}>{error}</Text>}
-        <Text mt={4} color="gray.300">
+
+        <Text mt={4} color="gray.300" textAlign="center">
           Already Registered?{' '}
           <Link to="/login">
             <Text as="span" color="blue.400" fontWeight="bold">

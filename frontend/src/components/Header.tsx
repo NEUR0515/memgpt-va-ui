@@ -1,26 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { Box, HStack, IconButton, Image, useColorMode, useColorModeValue, Text, Avatar, Menu, MenuButton, MenuList, MenuItem } from '@chakra-ui/react';
+import {
+  Box,
+  HStack,
+  IconButton,
+  Image,
+  useColorMode,
+  useColorModeValue,
+  Text,
+  Avatar,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
+} from '@chakra-ui/react';
 import { FiSun, FiMoon, FiVolumeX, FiVolume2 } from 'react-icons/fi';
-import {useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
-const handleLogout = async () => {
-  localStorage.removeItem('token');
-
-  try {
-    await fetch('/logout', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem('token')}`,
-      },
-    });
-  } catch (error) {
-    console.error("Logout failed", error);
-  }
-
-  window.location.href = '/';
-};
-
-// Define the types for the props
 interface HeaderProps {
   isTtsEnabled: boolean;
   setIsTtsEnabled: (value: boolean) => void;
@@ -34,22 +29,14 @@ const Header: React.FC<HeaderProps> = ({ isTtsEnabled, setIsTtsEnabled }) => {
 
   useEffect(() => {
     const fetchUserProfile = async () => {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        window.location.href = '/login';
-        return;
-      }
-
       try {
         const response = await fetch('/api/user-profile', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          method: 'GET',
+          credentials: 'include', // Include cookies in the request
         });
 
-        if (response.status === 403) {
-          console.error('Token expired or invalid. Redirecting to login.');
-          localStorage.removeItem('token');
+        if (response.status === 401 || response.status === 403) {
+          console.error('Unauthorized. Redirecting to login.');
           window.location.href = '/login';
           return;
         }
@@ -66,7 +53,8 @@ const Header: React.FC<HeaderProps> = ({ isTtsEnabled, setIsTtsEnabled }) => {
           setIsTtsEnabled(savedTtsEnabled);
         }
       } catch (error) {
-        console.error('Error fetching username:', error);
+        console.error('Error fetching user profile:', error);
+        window.location.href = '/login';
       }
     };
 
@@ -78,13 +66,31 @@ const Header: React.FC<HeaderProps> = ({ isTtsEnabled, setIsTtsEnabled }) => {
     setIsTtsEnabled(newTtsState);
     localStorage.setItem('ttsEnabled', JSON.stringify(newTtsState));
   };
-  const handleSpotifyLogout = () => {
-    // Remove the token from localStorage
-    localStorage.removeItem('spotifyToken');
-    
-    // Optionally redirect or refresh the page to reflect the logout
-    window.location.reload(); // or redirect to another page
+
+  const handleLogout = async () => {
+    try {
+      // Send a POST request to '/logout' with credentials included
+      await fetch('/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } catch (error) {
+      console.error('Logout failed', error);
+    }
+
+    // Redirect to login page
+    window.location.href = '/login';
   };
+
+  const handleSpotifyLogout = () => {
+    // Remove the Spotify token from wherever it's stored (if applicable)
+    // For example, if stored in localStorage:
+    localStorage.removeItem('spotifyToken');
+
+    // Optionally redirect or refresh the page to reflect the logout
+    window.location.reload(); // or navigate to another page
+  };
+
   const bg = useColorModeValue('gray.100', 'gray.900');
   const textColor = useColorModeValue('gray.800', 'white');
   const hoverColor = useColorModeValue('gray.200', 'gray.700');
@@ -93,8 +99,8 @@ const Header: React.FC<HeaderProps> = ({ isTtsEnabled, setIsTtsEnabled }) => {
     <Box position="relative" width="100%" maxW="100vw" boxShadow="md" bg={bg} p={4}>
       <HStack justify="space-between" align="center">
         {/* Logo on the left with link to homepage */}
-        <a href='/frontend'>
-          <Image src="/img/logo.png" alt="Logo" boxSize={{ base: "40px", md: "50px" }} cursor="pointer" />
+        <a href="/frontend">
+          <Image src="/img/logo.png" alt="Logo" boxSize={{ base: '40px', md: '50px' }} cursor="pointer" />
         </a>
 
         {/* Profile Icon Menu on the right */}
@@ -129,7 +135,7 @@ const Header: React.FC<HeaderProps> = ({ isTtsEnabled, setIsTtsEnabled }) => {
 
       {/* Title in the center */}
       <Box position="absolute" left="50%" top="50%" transform="translate(-50%, -50%)">
-        <Text fontWeight="bold" fontSize={{ base: "lg", md: "xl" }} color={textColor} textAlign="center">
+        <Text fontWeight="bold" fontSize={{ base: 'lg', md: 'xl' }} color={textColor} textAlign="center">
           J.A.R.V.I.S
         </Text>
       </Box>

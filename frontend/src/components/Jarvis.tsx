@@ -1,201 +1,158 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Flex, Box, useDisclosure, useColorModeValue} from '@chakra-ui/react';
+// Jarvis.tsx
+import React, { useState, useRef, useEffect, useReducer, useCallback, useContext } from 'react';
+import { Flex, Box, useDisclosure, useColorModeValue, useToast } from '@chakra-ui/react';
 import Header from './Header';
 import FileUploader from './FileUploader';
 import ChatWindow from './ChatWindow';
 import MessageInput from './MessageInput';
 import LiveTranscription from './LiveTranscription';
-import CalendarSection from './CalendarSection';  
+import CalendarSection from './CalendarSection';
 import TaskManager from './TaskManager';
 import { Message } from '../types';
 import sanitizeHtml from 'sanitize-html';
 import WebPlayback from './WebPlayback';
-import { useSearchParams } from 'react-router-dom';
-
-// Declare the types for SpeechRecognition
+import axios from 'axios';
+import { AuthContext } from './AuthContext';
+// Define the types for SpeechRecognition
 declare global {
   interface Window {
     SpeechRecognition: any;
     webkitSpeechRecognition: any;
+    Spotify: any;
   }
 }
 
-const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-const recognition = new SpeechRecognition();
-
-recognition.continuous = true;
-recognition.interimResults = true;
-recognition.lang = 'en-GB';
-
-
+// Reducer function for managing messages
+function messagesReducer(state: Message[], action: { type: string; message?: Message }): Message[] {
+  switch (action.type) {
+    case 'add':
+      return [...state, action.message!];
+    case 'clear':
+      return [];
+    default:
+      return state;
+  }
+}
 
 function Jarvis() {
   const { isOpen: isLeftPanelOpen, onToggle: toggleLeftPanel } = useDisclosure();
   const { isOpen: isRightPanelOpen, onToggle: toggleRightPanel } = useDisclosure();
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, dispatchMessages] = useReducer(messagesReducer, []);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [lastPlayedMessage, setLastPlayedMessage] = useState<string | null>(null);  // Track the last played message
-  const [isPageReloaded, setIsPageReloaded] = useState(true); // New flag to track if messages are from localStorage
+  const [lastPlayedMessage, setLastPlayedMessage] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
   const [firstName, setFirstName] = useState<string | null>(null);
-  const [profilePicture, setProfilePicture] = useState<string | null>(null);  // Add profilePicture state
-
-  // TTS state, synchronized with localStorage
+  const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [isTtsEnabled, setIsTtsEnabled] = useState<boolean>(() => {
     const savedTtsPreference = localStorage.getItem('ttsEnabled');
-    return savedTtsPreference ? JSON.parse(savedTtsPreference) : true;  // Default to true
+    return savedTtsPreference ? JSON.parse(savedTtsPreference) : true;
   });
-
-  // State for microphone listening
   const [isListening, setIsListening] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
-  const [transcription, setTranscription] = useState(''); // Transcription state
-
-  const [spotifyToken, setSpotifyToken] = useState('');
-  const [searchParams] = useSearchParams();
-  const [isSpotifyVisible, setIsSpotifyVisible] = useState<boolean>(true); // Manage visibility in Jarvis
-
-
-  useEffect(() => {
-    const token = searchParams.get('access_token');
-    if (token) {
-      setSpotifyToken(token);
-      localStorage.setItem('spotifyToken', token); // Store token in localStorage
-    } else {
-      const storedToken = localStorage.getItem('spotifyToken');
-      if (storedToken) {
-        setSpotifyToken(storedToken);
-      }
-    }
-  
-    // Token refresh logic
-    const refreshTokenInterval = setInterval(async () => {
-      try {
-        const response = await fetch("/auth/refresh", { method: "POST" });
-        const data = await response.json();
-        if (data.access_token) {
-          setSpotifyToken(data.access_token);  // Update state with refreshed token
-          localStorage.setItem("spotifyToken", data.access_token); // Save new token
-        }
-      } catch (error) {
-        console.error("Error refreshing token:", error);
-      }
-    }, 55 * 60 * 1000); // Refresh token after 55 minutes
-  
-    return () => clearInterval(refreshTokenInterval);
-  }, [searchParams]);
-
-  useEffect(() => {
-    const savedMessages = localStorage.getItem("chatMessages");
-    if (savedMessages) {
-      try {
-        setMessages(JSON.parse(savedMessages));
-        console.log("Messages loaded from localStorage:");
-      } catch (error) {
-        console.error("Error parsing saved messages:", error);
-      }
-    }
-  
-    // Immediately set this flag to false after loading messages
-    setIsPageReloaded(false);
-  }, []);  // Only load messages once, on component mount
-
-  // Store messages in localStorage whenever they change
-  useEffect(() => {
-    if (messages.length > 0) {
-      localStorage.setItem("chatMessages", JSON.stringify(messages));
-      console.log("Messages saved to localStorage:");
-    }
-  }, [messages]);  // Only update when messages change
-
-  // WebSocket connection setup with proper initialization
+  const [transcription, setTranscription] = useState('');
+  const [isSpotifyVisible, setIsSpotifyVisible] = useState<boolean>(true);
   const [ws, setWs] = useState<WebSocket | null>(null);
+  const toast = useToast();
+  const bgColor = useColorModeValue('gray.100', 'gray.800');
+  const textColor = useColorModeValue('gray.800', 'white');
+  const { isAuthenticated, setIsAuthenticated } = useContext(AuthContext);
 
-// Fetch user info (username and profile picture)
-useEffect(() => {
-  const fetchUserProfile = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      // Redirect to login if no token
-      window.location.href = '/login';
-      return;
-    }
-
-    try {
-      const response = await fetch('/api/user-profile', {  // Adjust endpoint as per your backend
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      
-      if (response.status === 403) {
-        // Token expired or invalid, redirect to login
-        localStorage.removeItem('token');
-        window.location.href = '/login';
-      } else {
-        const data = await response.json();
-        setUsername(data.username);
-        setFirstName(data.first_name);
-        setProfilePicture(data.profile_picture || '/img/default-avatar.png');  // Set profile picture or fallback to default
-      }
-    } catch (error) {
-      console.error('Error fetching user profile:', error);
+  // Utility function to extract error messages
+  const getErrorMessage = (error: unknown): string => {
+    if (error instanceof Error) {
+      return error.message;
+    } else if (typeof error === 'string') {
+      return error;
+    } else if (typeof error === 'object' && error !== null && 'message' in error) {
+      return (error as any).message;
+    } else {
+      return 'An unexpected error occurred';
     }
   };
 
-  fetchUserProfile();
-}, []);  // Run once when the component mounts
-
+  // Fetch user info (username and profile picture)
   useEffect(() => {
-    const token = localStorage.getItem("token");  // Get the token from localStorage or wherever it's stored
-    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    // const webSocket = new WebSocket(`${process.env.REACT_APP_WS_URL}?token=${token}`);
-    const webSocket = new WebSocket(`${protocol}://${window.location.host}/ws?token=${token}`);
-    setWs(webSocket);
-  
-    webSocket.onopen = () => {
-      console.log("WebSocket connection opened.");
+    const fetchUserProfile = async () => {
+      try {
+        const response = await fetch('/api/user-profile', {
+          credentials: 'include',
+        });
+
+        if (response.status === 401 || response.status === 403) {
+          // Token expired or invalid, redirect to login
+          setIsAuthenticated(false);
+          window.location.href = '/login';
+        } else {
+          const data = await response.json();
+          setUsername(data.username);
+          setFirstName(data.first_name);
+          setProfilePicture(data.profile_picture || '/img/default-avatar.png');
+          setIsAuthenticated(true);
+        }
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
+        toast({
+          title: 'Error',
+          description: 'Unable to fetch user profile.',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+        setIsAuthenticated(false);
+      }
     };
-  
+
+    fetchUserProfile();
+  }, [setIsAuthenticated, toast]);
+
+  // WebSocket connection setup with proper initialization
+  useEffect(() => {
+    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const webSocket = new WebSocket(`${protocol}://${window.location.host}/ws`);
+
+    webSocket.onopen = () => {
+      console.log('WebSocket connection opened.');
+    };
+
     webSocket.onmessage = (event) => {
       const data = JSON.parse(event.data);
       handleIncomingMessage(data);
     };
-  
+
     webSocket.onerror = (error) => {
-      console.error("WebSocket error:", error);
+      console.error('WebSocket error:', error);
+      toast({
+        title: 'WebSocket Error',
+        description: 'An error occurred with the WebSocket connection.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
     };
-  
+
     webSocket.onclose = () => {
-      console.log("WebSocket connection closed.");
+      console.log('WebSocket connection closed.');
     };
-  
+
+    setWs(webSocket);
+
     return () => {
       if (webSocket.readyState !== WebSocket.CLOSED) {
-        webSocket.close();  // Close WebSocket when the component unmounts
+        webSocket.close(); // Close WebSocket when the component unmounts
       }
     };
-  }, []);  // Ensure WebSocket connection is made on component mount
+  }, [toast]);
 
   // Function to fetch and play the TTS MP3
-  const playTTSResponse = async () => {
+  const playTTSResponse = useCallback(async () => {
     if (!isTtsEnabled) {
-      console.log("TTS is disabled, skipping playback.");
+      console.log('TTS is disabled, skipping playback.');
       return;
     }
 
     try {
-      const token = localStorage.getItem('token');  // Assuming the token is stored in localStorage
-      if (!token) {
-        console.log('No token found');
-        return;
-      }
-
-      // Fetch the TTS MP3 from the server
       const response = await fetch('/api/play-tts', {
-        headers: {
-          'Authorization': `Bearer ${token}`,  // Pass the token in the headers
-        },
+        credentials: 'include',
       });
 
       if (!response.ok) {
@@ -206,174 +163,266 @@ useEffect(() => {
       const audioBlob = await response.blob();
       const audioUrl = URL.createObjectURL(audioBlob);
       const audio = new Audio(audioUrl);
-      audio.play();  // Automatically play the audio
+      audio.play(); // Automatically play the audio
     } catch (error) {
       console.error('Error playing TTS audio:', error);
     }
-  };
+  }, [isTtsEnabled]);
 
-  const handleIncomingMessage = (data: any) => {
-    if (data.type === 'thought') {
-      const thoughtMessage: Message = {
-        role: 'ai',
-        content: data.message,
-        timestamp: new Date().toLocaleTimeString(),
-        name: 'Thought',
-        type: 'thought'
-      };
-      setMessages((prevMessages) => [...prevMessages, thoughtMessage]);
-      scrollToBottom();
-    } else {
-      const aiMessage: Message = {
-        role: 'ai',
-        content: data.message,
-        timestamp: new Date().toLocaleTimeString(),
-        name: 'Jarvis'
-      };
-      setMessages((prevMessages) => [...prevMessages, aiMessage]);
-      scrollToBottom();
-  
-      // Simplified check, only play TTS if it's a new message
-      if (isTtsEnabled && data.message !== lastPlayedMessage) {
+  const handleIncomingMessage = useCallback(
+    (data: any) => {
+      if (data.type === 'thought') {
+        const thoughtMessage: Message = {
+          role: 'ai',
+          content: data.message,
+          timestamp: new Date().toLocaleTimeString(),
+          name: 'Thought',
+          type: 'thought',
+        };
+        dispatchMessages({ type: 'add', message: thoughtMessage });
         scrollToBottom();
-        playTTSResponse();
-        setLastPlayedMessage(data.message);
+      } else {
+        const aiMessage: Message = {
+          role: 'ai',
+          content: data.message,
+          timestamp: new Date().toLocaleTimeString(),
+          name: 'Jarvis',
+        };
+        dispatchMessages({ type: 'add', message: aiMessage });
+        scrollToBottom();
 
+        // Simplified check, only play TTS if it's a new message
+        if (isTtsEnabled && data.message !== lastPlayedMessage) {
+          playTTSResponse();
+          setLastPlayedMessage(data.message);
+        }
       }
-    }
-  };
+    },
+    [isTtsEnabled, lastPlayedMessage, playTTSResponse]
+  );
 
-  const handleSendMessage = (message: string) => {
-    // Sanitize the user's input to remove any unwanted HTML or Markdown
-    const sanitizedMessage = sanitizeHtml(message, {
-      allowedTags: [],  // No HTML tags allowed (plain text only)
-      allowedAttributes: {}, // No attributes allowed
-    });
-  
-    const userMessage: Message = {
-      role: 'user',
-      content: sanitizedMessage,  // Use sanitized message content
-      timestamp: new Date().toLocaleTimeString(),
-      name: username ?? 'User',  // Use the username or default to 'User'
-    };
-  
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ message: userMessage.content }));
-      setMessages((prevMessages) => [...prevMessages, userMessage]);
-    } else {
-      console.error("WebSocket is not open. Cannot send message.");
-    }
-    scrollToBottom();
-  };
+  const handleSendMessage = useCallback(
+    (message: string) => {
+      // Sanitize the user's input to remove any unwanted HTML or Markdown
+      const sanitizedMessage = sanitizeHtml(message, {
+        allowedTags: [], // No HTML tags allowed (plain text only)
+        allowedAttributes: {}, // No attributes allowed
+      });
 
-  const scrollToBottom = () => {
+      const userMessage: Message = {
+        role: 'user',
+        content: sanitizedMessage,
+        timestamp: new Date().toLocaleTimeString(),
+        name: username ?? 'User',
+      };
+
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ message: userMessage.content }));
+        dispatchMessages({ type: 'add', message: userMessage });
+      } else {
+        console.error('WebSocket is not open. Cannot send message.');
+        toast({
+          title: 'Connection Error',
+          description: 'Unable to send message. WebSocket is not connected.',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+      }
+      scrollToBottom();
+    },
+    [username, ws, toast]
+  );
+
+  const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  }, []);
 
   const handleFileUpload = async (file: File) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    const response = await fetch('/upload', {
-      method: 'POST',
-      body: formData,
-    });
-    const result = await response.json();
-    const aiMessage: Message = {
-      role: 'ai',
-      content: `Jarvis analyzed the file and says: ${result.message}`,
-      timestamp: new Date().toLocaleTimeString(),
-      name: 'Jarvis',
-    };
-    setMessages((prevMessages) => [...prevMessages, aiMessage]);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await fetch('/upload', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      const aiMessage: Message = {
+        role: 'ai',
+        content: `Jarvis analyzed the file and says: ${result.message}`,
+        timestamp: new Date().toLocaleTimeString(),
+        name: 'Jarvis',
+      };
+      dispatchMessages({ type: 'add', message: aiMessage });
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      toast({
+        title: 'File Upload Failed',
+        description: 'An error occurred while uploading the file.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    }
   };
+
+  // Speech recognition setup
+  useEffect(() => {
+    let recognition: any;
+    if (isListening) {
+      if (!('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
+        console.error('Speech recognition not supported in this browser.');
+        toast({
+          title: 'Speech Recognition Unavailable',
+          description: 'Your browser does not support speech recognition.',
+          status: 'warning',
+          duration: 5000,
+          isClosable: true,
+        });
+        setIsListening(false);
+        return;
+      }
+
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognition = new SpeechRecognition();
+
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-GB';
+
+      recognition.onresult = (event: any) => {
+        let interimTranscription = '';
+        let finalTranscription = '';
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscription += transcript;
+          } else {
+            interimTranscription += transcript;
+          }
+        }
+
+        // Display interim transcription
+        setTranscription(interimTranscription);
+
+        // Send final transcription as a message and stop listening
+        if (finalTranscription) {
+          handleSendMessage(finalTranscription);
+          setTranscription(''); // Clear transcription
+          recognition.stop(); // Stop the microphone after the message is sent
+          setIsListening(false); // Update the state to reflect the mic is no longer listening
+        }
+      };
+
+      recognition.onerror = (event: any) => {
+        console.error('Speech recognition error:', event.error);
+        toast({
+          title: 'Speech Recognition Error',
+          description: `Error occurred: ${event.error}`,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognition.start();
+      console.log('Microphone activated.');
+    }
+
+    // Cleanup function
+    return () => {
+      if (recognition && recognition.abort) {
+        recognition.abort();
+        console.log('Microphone deactivated.');
+      }
+    };
+  }, [isListening, handleSendMessage, toast]);
 
   // Toggle microphone listening
   const toggleListening = () => {
-    if (isListening) {
-      recognition.stop();
-      console.log("Microphone deactivated.");
-    } else {
-      recognition.start();
-      console.log("Microphone activated.");
-    }
-    setIsListening(!isListening);
-  };
-
-  recognition.onresult = (event: any) => {
-    let interimTranscription = '';
-    let finalTranscription = '';
-
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-      const transcript = event.results[i][0].transcript;
-      if (event.results[i].isFinal) {
-        finalTranscription += transcript;
-      } else {
-        interimTranscription += transcript;
-      }
-    }
-
-    // Display interim transcription
-    setTranscription(interimTranscription);
-
-  // Send final transcription as a message and stop listening
-  if (finalTranscription) {
-    handleSendMessage(finalTranscription);
-    setTranscription('');  // Clear transcription
-    recognition.stop();    // Stop the microphone after the message is sent
-    setIsListening(false); // Update the state to reflect the mic is no longer listening
-    }
-  };
-
-  recognition.onerror = (event: any) => {
-    console.error('Speech recognition error:', event.error);
-    setIsListening(false);
-  };
-
-  recognition.onend = () => {
-    setIsListening(false);
+    setIsListening((prevState) => !prevState);
   };
 
   // Simulate audio levels for mic activity
   useEffect(() => {
-    const interval = setInterval(() => {
-      setAudioLevel(Math.floor(Math.random() * 100)); // Simulate random audio levels
-    }, 500);
-    return () => clearInterval(interval);
-  }, []);
+    let interval: NodeJS.Timeout;
+    if (isListening) {
+      interval = setInterval(() => {
+        setAudioLevel(Math.floor(Math.random() * 100)); // Simulate random audio levels
+      }, 500);
+    } else {
+      setAudioLevel(0);
+    }
+    return () => {
+      clearInterval(interval);
+    };
+  }, [isListening]);
 
-  const bgColor = useColorModeValue('gray.100', 'gray.800');
-  const textColor = useColorModeValue('gray.800', 'white');
+  const handleSpotifyLogin = () => {
+    // Directly navigate to the backend's /auth/login endpoint
+    window.location.href = '/auth/login';
+  };
+
+  const handleClearMessages = () => {
+    dispatchMessages({ type: 'clear' });
+    localStorage.removeItem('chatMessages');
+  };
+
+  // Function to fetch Spotify token from backend
+  const fetchSpotifyToken = async (): Promise<string> => {
+    try {
+      const response = await axios.get('/api/spotify-token', {
+        withCredentials: true, // Ensure cookies are sent with the request
+      });
+      return response.data.spotify_token;
+    } catch (error) {
+      const message = getErrorMessage(error);
+      console.error('Error fetching Spotify token:', message);
+      toast({
+        title: 'Spotify Token Error',
+        description: 'Unable to retrieve Spotify token. Please log in again.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      // Redirect to Spotify login if token fetch fails
+      // window.location.href = '/auth/login';
+      return '';
+    }
+  };
 
   return (
     <Flex direction="column" height="100vh">
-      <Header isTtsEnabled={isTtsEnabled} setIsTtsEnabled={setIsTtsEnabled}/>
-      <Flex
-        flex="1"
-        overflow="hidden"
-        direction={{ base: 'column', md: 'row' }}  // Mobile view: Column, Desktop: Row
-      >
+      <Header isTtsEnabled={isTtsEnabled} setIsTtsEnabled={setIsTtsEnabled} />
+      <Flex flex="1" overflow="hidden" direction={{ base: 'column', md: 'row' }}>
         {isLeftPanelOpen && (
-          <Box
-            width={{ base: '100%', md: '20%' }}  // Full width on mobile
-            bg={bgColor}
-            color={textColor}
-            p={4}
-            overflowY="auto"
-          >
+          <Box width={{ base: '100%', md: '20%' }} bg={bgColor} color={textColor} p={4} overflowY="auto">
             <FileUploader onFileUpload={handleFileUpload} />
           </Box>
         )}
         <Box flex="1" bg={bgColor} p={4}>
-          <ChatWindow messages={messages} messagesEndRef={messagesEndRef} username={username ?? 'User'} profilePicture={profilePicture} firstName={firstName ?? 'Name'} />
+          <ChatWindow
+            messages={messages}
+            messagesEndRef={messagesEndRef}
+            username={username ?? 'User'}
+            profilePicture={profilePicture}
+            firstName={firstName ?? 'Name'}
+          />
         </Box>
         {isRightPanelOpen && (
-          <Box
-            width={{ base: '100%', md: '20%' }}  // Full width on mobile
-            bg={bgColor}
-            p={4}
-            overflowY="auto"
-          >
-            {/* Render the CalendarSection and TaskSection inside the right panel */}
+          <Box width={{ base: '100%', md: '20%' }} bg={bgColor} p={4} overflowY="auto">
             <CalendarSection />
             <TaskManager />
           </Box>
@@ -381,28 +430,36 @@ useEffect(() => {
       </Flex>
       <LiveTranscription transcription={transcription} />
       <MessageInput
-        setMessages={setMessages}
         onSendMessage={handleSendMessage}
+        onClearMessages={handleClearMessages}
         toggleLeftPanel={toggleLeftPanel}
         toggleRightPanel={toggleRightPanel}
         audioLevel={audioLevel}
         isListening={isListening}
         toggleListening={toggleListening}
-        isSpotifyVisible={isSpotifyVisible} // Pass Spotify visibility
-        setIsSpotifyVisible={setIsSpotifyVisible} // Pass state updater
+        isSpotifyVisible={isSpotifyVisible}
+        setIsSpotifyVisible={setIsSpotifyVisible}
       />
-    {/* Spotify Component */}
-    {spotifyToken ? (
-      isSpotifyVisible ? (
-        <WebPlayback spotifyToken={spotifyToken} />
-      ) : null
-    ) : (
-      <div style={{ position: 'fixed', bottom: '20px', right: '20px', backgroundColor: '#282828', color: 'white', padding: '10px', borderRadius: '8px' }}>
-        <a className="btn-spotify" href="/auth/login">
-          Login with Spotify
-        </a>
-      </div>
-    )}
+      {/* Spotify Component */}
+      {/* {isSpotifyVisible ? (
+        <WebPlayback fetchSpotifyToken={fetchSpotifyToken} />
+      ) : (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '20px',
+            right: '20px',
+            backgroundColor: '#282828',
+            color: 'white',
+            padding: '10px',
+            borderRadius: '8px',
+          }}
+        >
+          {/* <button className="btn-spotify" onClick={handleSpotifyLogin}>
+            Login with Spotify
+          </button>
+        </div>
+      )} */}
     </Flex>
   );
 }

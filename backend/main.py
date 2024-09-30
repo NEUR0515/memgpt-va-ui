@@ -1,14 +1,26 @@
 import json
 import logging
 from os.path import join, dirname, exists
-import ast
-import re
 import requests
-from fastapi import FastAPI, UploadFile, WebSocket, WebSocketDisconnect, HTTPException, Body, Depends, status, Query, Request
+from fastapi import (
+    FastAPI,
+    UploadFile,
+    WebSocket,
+    WebSocketDisconnect,
+    HTTPException,
+    Body,
+    Depends,
+    status,
+    Query,
+    Request,
+    Response,
+    Cookie,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, RedirectResponse
-from memgpt import create_client, memory
+from fastapi.responses import FileResponse, RedirectResponse, JSONResponse
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from memgpt import create_client
 from utils import say
 import uvicorn
 from dotenv import load_dotenv
@@ -19,48 +31,68 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 import os
 import pytz
-from typing import Optional
+from typing import Optional, Set
 from sqlalchemy.orm import Session
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from datetime import datetime, timedelta, timezone
 from passlib.context import CryptContext
 from models import User
-from database import SessionLocal, engine
+from database import Base, SessionLocal, engine
 from pydantic import BaseModel, HttpUrl
-from fastapi.middleware.cors import CORSMiddleware
-from logout_router import router as auth_router
 from apscheduler.schedulers.background import BackgroundScheduler
 import asyncio
 import base64
 import urllib.parse
+from starlette.websockets import WebSocket
+from starlette.types import Scope
 
+# Function to extract cookies manually (if needed)
+def get_cookie(scope: Scope, key: str):
+    cookies = {}
+    for header in scope.get("headers", []):
+        if header[0].decode().lower() == "cookie":
+            cookie_str = header[1].decode()
+            for cookie in cookie_str.split("; "):
+                if "=" in cookie:
+                    k, v = cookie.split("=", 1)
+                    cookies[k] = v
+    return cookies.get(key)
+
+# Load environment variables
 dotenv_path = join(dirname(__file__), '.env')
 load_dotenv(dotenv_path)
 
-# FastAPI app
+# Configure Logging
+logging.basicConfig(
+    level=logging.DEBUG,  # Change to INFO or WARNING in production
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler("app.log"),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+
+# Initialize FastAPI app
 app = FastAPI()
 
 # Initialize the scheduler
 scheduler = BackgroundScheduler()
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-
-# Add the CORSMiddleware
+# Add CORS Middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # You can specify the allowed origins, "*" allows all
+    allow_origins=["http://127.0.0.1:8000", "http://172.16.3.80:8000"],  # Update this with your frontend's URL in production
     allow_credentials=True,
-    allow_methods=["*"],  # Allow all methods (GET, POST, etc.)
-    allow_headers=["*"],  # Allow all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-# Mount the correct static directory to serve the JS and CSS files
+# Mount Static Files
 app.mount("/static", StaticFiles(directory="../frontend/build/static"), name="static")
-#app.mount("/frontend", StaticFiles(directory="../frontend/build", html=True), name="frontend")
 app.mount("/img", StaticFiles(directory="../frontend/public/img"), name="img")
 
-# Dependency
+# Dependency to get DB session
 def get_db():
     db = SessionLocal()
     try:
@@ -68,83 +100,89 @@ def get_db():
     finally:
         db.close()
 
+# Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# Your JWT secret and algorithm
+# JWT Configuration
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 720 # (12 Hours)
+ACCESS_TOKEN_EXPIRE_MINUTES = 720  # 12 Hours
 
+# Spotify Configuration
 CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID')
 CLIENT_SECRET = os.getenv('SPOTIFY_CLIENT_SECRET')
 SPOTIFY_AUTH_URL = "https://accounts.spotify.com/authorize"
 TOKEN_URL = "https://accounts.spotify.com/api/token"
 
-# Initialize the client and create tools
+# Initialize MemGPT client and attach to agent
 client = create_client()
-# Function to get an existing agent
-def get_existing_agent(agent_name):
+
+def get_existing_agent(agent_name: str):
     agents = client.list_agents()
     for agent in agents:
-        print(f"Agent {agent.id} is named {agent.name}")
+        logger.debug(f"Agent {agent.id} is named {agent.name}")
         if agent.name == agent_name:
             return agent
     return None
 
-# Function to get an existing source
-def get_existing_source(data_source_name):
+def get_existing_source(data_source_name: str):
     data_sources = client.list_sources()
     for data_source in data_sources:
-        print(f"Source {data_source.id} is named {data_source.name}")
+        logger.debug(f"Source {data_source.id} is named {data_source.name}")
         if data_source.name == data_source_name:
             return data_source
     return None
 
-# Connect to an existing agent by name (or manually specify its ID)
-agent_name = "Jarvis"  # Set this to the name of your manually created agent
-agent_state = get_existing_agent(agent_name)
-data_source_name = "Jarvis-Data"   # Set this to the name of your manually created source
-source_state = get_existing_source(data_source_name)
+# Connect to the existing agent and source
+agent_name = "Jarvis"  # Replace with your agent's name
+data_source_name = "Jarvis-Data"  # Replace with your data source's name
 
+agent_state = get_existing_agent(agent_name)
 if not agent_state:
-    print(f"No agent with the name '{agent_name}' was found. Please create it manually.")
+    logger.error(f"No agent with the name '{agent_name}' was found. Please create it manually.")
     exit(1)
 
+source_state = get_existing_source(data_source_name)
 if not source_state:
-    print(f"No source with the name '{data_source_name}' was found. It will now be created.")
+    logger.info(f"No source named '{data_source_name}' found. Creating it now.")
     client.create_source(name=data_source_name)
     source_state = get_existing_source(data_source_name)
     if not source_state:
-        print("The source was created but could not be found. Please try again.")
+        logger.error("Source was created but could not be found. Please try again.")
         exit(1)
-    
-    
-client.attach_source_to_agent(source_state.id, agent_id=agent_state.id)
-# Store active WebSocket connections
-active_connections = set()
 
+client.attach_source_to_agent(source_state.id, agent_id=agent_state.id)
+logger.info(f"Attached source '{data_source_name}' to agent '{agent_name}'.")
+
+# Store active WebSocket connections
+active_connections: Set[WebSocket] = set()
+
+# Pydantic Models
 class UserProfile(BaseModel):
     username: str
     password: str
     first_name: str
     last_name: str
     email: str
-    profile_picture: Optional[HttpUrl] = None  # Now this field is optional
+    profile_picture: Optional[HttpUrl] = None
 
-# Model for returning user profile data (output model)
 class UserProfileResponse(BaseModel):
     first_name: str
     last_name: str
     email: str
-    profile_picture: Optional[HttpUrl] = None  # Now this field is optional
-    
+    profile_picture: Optional[HttpUrl] = None
+
 class UserProfileUpdate(BaseModel):
     first_name: str
     last_name: str
     email: str
-    profile_picture: Optional[HttpUrl] = None  # Make profile picture optional
-    password: Optional[str] = None  # Password is optional for updating
+    profile_picture: Optional[HttpUrl] = None
+    password: Optional[str] = None
 
+class SpotifyTokenResponse(BaseModel):
+    spotify_token: str
+
+# Utility Functions
 def get_user_by_username(db: Session, username: str):
     return db.query(User).filter(User.username == username).first()
 
@@ -156,44 +194,180 @@ def create_user(db: Session, user: UserProfile):
         first_name=user.first_name,
         last_name=user.last_name,
         email=user.email,
-        profile_picture=str(user.profile_picture) if user.profile_picture else None  # Convert to string if not None
+        profile_picture=str(user.profile_picture) if user.profile_picture else None
     )
     db.add(db_user)
     db.commit()
-    return f"User {user.username} created successfully."
+    db.refresh(db_user)  # Refresh to get the latest data from the DB
+    logger.info(f"User '{user.username}' created successfully.")
+    
+    # Return the UserProfileResponse model
+    return UserProfileResponse(
+        first_name=db_user.first_name,
+        last_name=db_user.last_name,
+        email=db_user.email,
+        profile_picture=db_user.profile_picture
+    )
 
-@app.post("/register")
-def register_user(user: UserProfile, db: Session = Depends(get_db)):
-    db_user = get_user_by_username(db, username=user.username)
-    if db_user:
-        raise HTTPException(status_code=400, detail="Username already registered")
-    return create_user(db=db, user=user)
-
-# Authenticate the user
 def authenticate_user(username: str, password: str, db: Session):
     user = db.query(User).filter(User.username == username).first()
     if not user:
+        logger.warning(f"Authentication failed for username: {username} (user not found)")
         return False
     if not pwd_context.verify(password, user.hashed_password):
+        logger.warning(f"Authentication failed for username: {username} (incorrect password)")
         return False
     return user
 
+def get_token_from_cookie(access_token: str = Cookie(None)):
+    if not access_token:
+        logger.warning("Access token cookie not found.")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+    return access_token
+
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
-    london_tz = pytz.timezone('Europe/London')
-    now = datetime.now(london_tz)
+    now = datetime.now(timezone.utc)
     if expires_delta:
         expire = now + expires_delta
     else:
-        expire = now + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)  # Use the updated expiration time
-    to_encode.update({"exp": expire.timestamp()})
+        expire = now + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": int(expire.timestamp())})  # Convert to integer UNIX timestamp
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
+def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None):
+    to_encode = data.copy()
+    now = datetime.now(timezone.utc)
+    if expires_delta:
+        expire = now + expires_delta
+    else:
+        expire = now + timedelta(days=30)  # 30 days expiration
+    to_encode.update({"exp": int(expire.timestamp())})  # Convert to integer UNIX timestamp
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    logger.debug(f"Refresh token created for user: {data.get('sub')}")
+    return encoded_jwt
+
+def get_current_user(db: Session, token: str):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            logger.error("Token payload missing 'sub'")
+            raise HTTPException(status_code=403, detail="Token is invalid or expired")
+    except JWTError as e:
+        logger.error(f"JWTError during token decoding: {e}")
+        raise HTTPException(status_code=403, detail="Token is invalid or expired")
+    
+    user = db.query(User).filter(User.username == username).first()
+    if not user:
+        logger.error(f"User not found for username: {username}")
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return user
+
+def get_valid_spotify_token(user: User, db: Session):
+    if user.spotify_access_token and user.spotify_token_expires:
+        try:
+            spotify_token_expires = user.spotify_token_expires
+            if spotify_token_expires.tzinfo is None:
+                # Assume UTC if timezone is missing
+                spotify_token_expires = spotify_token_expires.replace(tzinfo=timezone.utc)
+                logger.debug("Assumed UTC timezone for spotify_token_expires.")
+    
+            logger.debug(f"Spotify token expires at: {spotify_token_expires}, tzinfo: {spotify_token_expires.tzinfo}")
+    
+            current_time = datetime.now(timezone.utc)
+            logger.debug(f"Current UTC time: {current_time}")
+    
+            if spotify_token_expires > current_time:
+                logger.info("Spotify token is still valid.")
+                return user.spotify_access_token
+            else:
+                logger.info("Spotify token has expired. Attempting to refresh.")
+                refresh_spotify_token(user, db)
+                db.refresh(user)
+    
+                # Re-check after refresh
+                if user.spotify_access_token and user.spotify_token_expires > datetime.now(timezone.utc):
+                    logger.info("Spotify token is still valid after refresh.")
+                    return user.spotify_access_token
+    
+            logger.error("Failed to refresh Spotify token. User may need to re-authenticate with Spotify.")
+            return None
+        except Exception as e:
+            logger.error(f"Error handling Spotify tokens: {e}")
+            return None
+    else:
+        logger.error("No Spotify tokens found for user. User may need to authenticate with Spotify.")
+        return None
+
+def refresh_spotify_token(user: User, db: Session):
+    refresh_token = user.spotify_refresh_token
+    if not refresh_token:
+        logger.error("No refresh token available. Cannot refresh the Spotify token.")
+        return
+    
+    data = {
+        "grant_type": "refresh_token",
+        "refresh_token": refresh_token,
+        "client_id": CLIENT_ID,
+        "client_secret": CLIENT_SECRET,
+    }
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded"
+    }
+    response = requests.post(TOKEN_URL, data=data, headers=headers)
+    
+    if response.status_code == 200:
+        token_data = response.json()
+        new_access_token = token_data.get("access_token")
+        expires_in = token_data.get("expires_in")  # Typically in seconds
+        
+        # Calculate the new expiration time
+        expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
+        
+        # Update user's Spotify tokens in the database
+        user.spotify_access_token = new_access_token
+        user.spotify_token_expires = expires_at  # Offset-naive UTC datetime
+        db.commit()
+        logger.info("Spotify token successfully refreshed.")
+    else:
+        logger.error(f"Failed to refresh Spotify token: {response.status_code}, {response.text}")
+
+
+@app.get("/api/spotify-token", response_model=SpotifyTokenResponse)
+def get_spotify_token(
+    token: str = Depends(get_token_from_cookie),
+    db: Session = Depends(get_db)
+):
+    current_user = get_current_user(db, token)
+    if not current_user:
+        raise HTTPException(status_code=401, detail="User not authenticated")
+
+    spotify_token = get_valid_spotify_token(current_user, db)
+    if not spotify_token:
+        raise HTTPException(status_code=400, detail="Spotify token not available. Please authenticate with Spotify.")
+    
+    return {"spotify_token": spotify_token}
+
+# Authentication Routes
+@app.post("/register", response_model=UserProfileResponse)
+def register_user(user: UserProfile, db: Session = Depends(get_db)):
+    db_user = get_user_by_username(db, username=user.username)
+    if db_user:
+        logger.warning(f"Attempt to register with existing username: {user.username}")
+        raise HTTPException(status_code=400, detail="Username already registered")
+    return create_user(db=db, user=user)
+
 @app.post("/token")
-def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+def login_for_access_token(
+    form_data: OAuth2PasswordRequestForm = Depends(), 
+    db: Session = Depends(get_db)
+):
     user = authenticate_user(form_data.username, form_data.password, db)
     if not user:
+        logger.warning(f"Authentication failed for username: {form_data.username}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -202,57 +376,115 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
     access_token = create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
-    return {"access_token": access_token, "token_type": "bearer"}
+    expire = datetime.now(timezone.utc) + access_token_expires  # Make expire timezone-aware
+    response = JSONResponse(content={"access_token": access_token, "token_type": "bearer"})
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        samesite="Lax",  # Changed from "None" to "Lax" for development
+        expires=int(expire.timestamp()),  # Ensure it's an integer
+        secure=False  # Set to True if using HTTPS in production
+    )
+    # Optionally, set the refresh token cookie here if applicable
+    return response
 
-def verify_token(token: str = Depends(oauth2_scheme)):
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
-            raise HTTPException(status_code=403, detail="Token is invalid or expired")
-        return {"username": username}
-    except JWTError:
-        raise HTTPException(status_code=403, detail="Token is invalid or expired")
+@app.post("/refresh-token")
+def refresh_access_token(
+    db: Session = Depends(get_db),
+    refresh_token: str = Cookie(None)  # Assuming refresh_token is stored in a separate cookie
+):
+    if not refresh_token:
+        logger.warning("Refresh token cookie not found.")
+        raise HTTPException(status_code=401, detail="Refresh token missing.")
+    
+    payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+    username: str = payload.get("sub")
+    if username is None:
+        logger.error("Refresh token payload missing 'sub'")
+        raise HTTPException(status_code=403, detail="Invalid refresh token")
+    
+    user = db.query(User).filter(User.username == username).first()
+    if not user:
+        logger.error(f"User not found for username: {username}")
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Check if the refresh token matches
+    if user.spotify_refresh_token != refresh_token:
+        logger.warning(f"Refresh token mismatch for user: {username}")
+        raise HTTPException(status_code=403, detail="Invalid refresh token")
+    
+    # Create new access token
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.username}, expires_delta=access_token_expires
+    )
+    
+    # Optionally, create a new refresh token (token rotation)
+    new_refresh_token = create_refresh_token(
+        data={"sub": user.username}, expires_delta=timedelta(days=30)
+    )
+    
+    # Update refresh token in the database
+    user.spotify_refresh_token = new_refresh_token
+    user.spotify_token_expires = datetime.now(timezone.utc) + timedelta(days=30)
+    db.commit()
+    logger.info(f"Access token refreshed for user: {username}")
+    
+    expire_access = datetime.now(timezone.utc) + access_token_expires
+    expire_refresh = datetime.now(timezone.utc) + timedelta(days=30)
+    
+    response = JSONResponse(content={"access_token": access_token, "token_type": "bearer"})
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        samesite="Lax",
+        expires=int(expire_access.timestamp()),
+        secure=False  # Set to True if using HTTPS
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=new_refresh_token,
+        httponly=True,
+        samesite="Lax",
+        expires=int(expire_refresh.timestamp()),
+        secure=False
+    )
+    return response
 
+# Token Verification Endpoint
 @app.get("/verify-token/{token}")
 async def verify_user_token(token: str):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
         if username is None:
+            logger.error("Token payload missing 'sub'")
             raise HTTPException(status_code=403, detail="Token is invalid or expired")
+        logger.info(f"Token is valid for user: {username}")
         return {"message": "Token is valid"}
-    except JWTError:
+    except JWTError as e:
+        logger.error(f"JWTError during token verification: {e}")
         raise HTTPException(status_code=403, detail="Token is invalid or expired")
 
-# Ensure that the token is validated (use your own verify_token function or equivalent)
-def get_current_user(db: Session, token: str):
-    payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-    username: str = payload.get("sub")
-    if username is None:
-        raise HTTPException(status_code=403, detail="Token is invalid or expired")
-    
-    user = db.query(User).filter(User.username == username).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    return user
-
-# Route to get user profile
+# User Profile Endpoints
 @app.get("/api/user-profile", response_model=UserProfileResponse)
-def get_user_profile(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+def get_user_profile(token: str = Depends(get_token_from_cookie), db: Session = Depends(get_db)):
     user = get_current_user(db, token)
     return {
-        "username": user.username,  # Ensure this is included
         "first_name": user.first_name,
         "last_name": user.last_name,
         "email": user.email,
         "profile_picture": user.profile_picture,
-        # Do not return password for security reasons
     }
+
 @app.put("/api/user-profile", response_model=UserProfileResponse)
-def update_user_profile(profile_data: UserProfileUpdate, token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
-    #logging.info(f"Received profile data: {profile_data}")
+def update_user_profile(
+    profile_data: UserProfileUpdate,
+    token: str = Depends(get_token_from_cookie),
+    db: Session = Depends(get_db)
+):
     user = get_current_user(db, token)
 
     # Update user fields
@@ -260,17 +492,17 @@ def update_user_profile(profile_data: UserProfileUpdate, token: str = Depends(oa
     user.last_name = profile_data.last_name
     user.email = profile_data.email
 
-    # Convert HttpUrl to string before saving to the database
+    # Update profile picture if provided
     user.profile_picture = str(profile_data.profile_picture) if profile_data.profile_picture else None
 
     # Update password if provided
-    if profile_data.password:  
+    if profile_data.password:
         hashed_password = pwd_context.hash(profile_data.password)
         user.hashed_password = hashed_password
 
     db.commit()
+    logger.info(f"User '{user.username}' profile updated successfully.")
 
-    # Return the updated user profile (without the password)
     return {
         "first_name": user.first_name,
         "last_name": user.last_name,
@@ -278,54 +510,109 @@ def update_user_profile(profile_data: UserProfileUpdate, token: str = Depends(oa
         "profile_picture": user.profile_picture
     }
 
-@app.get("/api/user-info")
-async def get_user_info(token: str = Depends(oauth2_scheme)):
-    return verify_token(token)
+# Spotify Authentication Routes
+@app.get("/auth/login")
+async def spotify_login(request: Request):
+    scopes = "user-read-private user-read-email streaming user-read-playback-state user-modify-playback-state"
+    
+    # Build the dynamic redirect_uri using the full request URL
+    base_url = str(request.url).split('/auth/login')[0]  # Removes the path part of the current URL
+    redirect_uri = f"{base_url}/auth/callback"
+    
+    params = {
+        "response_type": "code",
+        "client_id": CLIENT_ID,
+        "scope": scopes,
+        "redirect_uri": redirect_uri,
+        "state": "optional_state_parameter",  # Optional: Used to prevent CSRF
+        "show_dialog": "true"  # Optional: Forces the user to re-login and re-authorize
+    }
+    
+    auth_url = f"{SPOTIFY_AUTH_URL}?{urllib.parse.urlencode(params)}"
+    logger.info("Redirecting user to Spotify authentication.")
+    return RedirectResponse(url=auth_url)
 
-@app.get("/frontend")
-def serve_frontend():
-    index_file_path = "../frontend/build/index.html"
-    if os.path.exists(index_file_path):
-        #print(f"Serving frontend from {index_file_path}")
-        return FileResponse(index_file_path)
-    else:
-        #print(f"index.html not found at {index_file_path}")
-        return {"error": "index.html not found"}
+@app.get("/auth/callback")
+async def spotify_callback(request: Request, code: str = Query(...), state: Optional[str] = Query(None), db: Session = Depends(get_db)):
+    redirect_uri = str(request.url).split('/auth/callback')[0] + '/auth/callback'
+    
+    # Exchange authorization code for access and refresh tokens
+    payload = {
+        "grant_type": "authorization_code",
+        "code": code,
+        "redirect_uri": redirect_uri,
+        "client_id": CLIENT_ID,
+        "client_secret": CLIENT_SECRET,
+    }
+    
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded"
+    }
+    
+    response = requests.post(TOKEN_URL, data=payload, headers=headers)
+    
+    if response.status_code != 200:
+        logger.error(f"Failed to obtain tokens from Spotify: {response.status_code}, {response.text}")
+        raise HTTPException(status_code=400, detail="Failed to obtain access token from Spotify.")
+    
+    token_data = response.json()
+    access_token = token_data["access_token"]
+    refresh_token = token_data.get("refresh_token")
+    expires_in = token_data.get("expires_in")  # in seconds
+    
+    # Calculate token expiration time
+    expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
+    
+    # Extract access token from cookie
+    access_token_cookie = request.cookies.get("access_token")
+    if not access_token_cookie:
+        logger.error("Access token cookie missing during Spotify callback.")
+        raise HTTPException(status_code=401, detail="Unauthorized: Access token missing.")
+    
+    # Retrieve the user associated with the access token
+    user = get_current_user(db, access_token_cookie)
+    if not user:
+        logger.error("User not found during Spotify callback.")
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Update user's Spotify tokens in the database
+    user.spotify_access_token = access_token
+    if refresh_token:
+        user.spotify_refresh_token = refresh_token
+    user.spotify_token_expires = expires_at  # Assign datetime object directly
+    db.commit()
+    logger.info(f"Spotify tokens updated for user: {user.username}")
+    base_url = str(request.url).split('/auth/callback')[0]
+    # Redirect to frontend with success message or user dashboard
+    frontend_url = os.getenv("FRONTEND_URL", base_url)  # Replace with your frontend URL
+    return RedirectResponse(url=frontend_url)
 
-@app.get("/")
-def serve_frontend():
-    index_file_path = "../frontend/build/index.html"
-    if os.path.exists(index_file_path):
-        #print(f"Serving frontend from {index_file_path}")
-        return FileResponse(index_file_path)
-    else:
-        #print(f"index.html not found at {index_file_path}")
-        return {"error": "index.html not found"}
+@app.post("/logout")
+async def logout(response: Response):
+    response.delete_cookie(key="access_token")
+    response.delete_cookie(key="refresh_token")
+    return {"message": "Logged out successfully"}
 
+# WebSocket Endpoints
 @app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket, token: str = Query(None)):
-    # Token validation before accepting WebSocket connection
-    if not token:
-        await websocket.close(code=1008)  # Close connection with specific code
-        await websocket.send_json({"detail": "Token is missing"})
+async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)):
+    await websocket.accept()
+    access_token = get_cookie(websocket.scope, "access_token")
+    if not access_token:
+        logger.warning("WebSocket connection attempted without token.")
+        await websocket.close(code=1008)  # Policy Violation
         return
-
     try:
-        # Verify token using the verify_token function
-        token_payload = verify_token(token)
-        username = token_payload.get("username")
-        if not username:
-            raise HTTPException(status_code=403, detail="Token is invalid or expired")
-        print(f"Token verified for user: {username}")
-
+        user = get_current_user(db, access_token)
+        username = user.username
+        logger.info(f"WebSocket connection accepted for user: {username}")
     except HTTPException as e:
-        await websocket.close(code=1008)  # Close WebSocket if token is invalid
-        await websocket.send_json({"detail": "Token is invalid or expired"})
+        logger.warning(f"WebSocket connection closed due to invalid token: {e.detail}")
+        await websocket.close(code=1008)
         return
 
-    await websocket.accept()  # Accept WebSocket connection
     active_connections.add(websocket)
-    print(f"WebSocket connection accepted for user: {username}")
+    logger.info(f"WebSocket connection established for user: {username}")
 
     try:
         while True:
@@ -333,21 +620,22 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(None)):
                 # Receive the incoming message
                 data = await websocket.receive_text()
                 message = json.loads(data)
-
-                #print(f"Received message: {message.get('message')}")
-
             except WebSocketDisconnect:
-                print(f"WebSocket disconnected by {username}.")
+                logger.info(f"WebSocket disconnected by {username}.")
                 break
+            except Exception as e:
+                logger.error(f"Error receiving message from {username}: {e}")
+                await websocket.send_json({"error": "Invalid message format."})
+                continue
 
             try:
                 command = message.get('message', '')
-                print(f"Processing command")
+                logger.debug(f"Processing command from {username}: {command}")
 
                 if command:
-                    if "exit" in command or "stop" in command:
+                    if "exit" in command.lower() or "stop" in command.lower():
                         await websocket.close()
-                        print(f"WebSocket closed on 'exit' or 'stop' command by {username}.")
+                        logger.info(f"WebSocket closed on 'exit' or 'stop' command by {username}.")
                         break
                     else:
                         response = client.user_message(agent_id=agent_state.id, message=command)
@@ -358,26 +646,25 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(None)):
                                 "type": "thought",
                                 "message": thought_message
                             })
-                            #print(f"Sent thought message: {thought_message}")
+                            logger.debug(f"Sent thought message to {username}: {thought_message}")
 
                         assistant_message = None
                         if response.messages:
                             for r in response.messages:
                                 if "assistant_message" in r:
                                     assistant_message = r.get("assistant_message")
-                                    #break
 
                         if assistant_message:
                             await broadcast_message(assistant_message)
                             say(assistant_message)
-                            print(f"Broadcasted message")
+                            logger.debug(f"Broadcasted assistant message: {assistant_message}")
 
             except Exception as e:
-                print(f"Error processing message: {str(e)}")
+                logger.error(f"Error processing message from {username}: {e}")
                 await websocket.send_text(f"Error: {str(e)}")
 
     except WebSocketDisconnect:
-        print(f"WebSocket disconnected gracefully by {username}.")
+        logger.info(f"WebSocket disconnected gracefully by {username}.")
     finally:
         active_connections.remove(websocket)
         await broadcast_log(f"WebSocket connection closed for {username}.")
@@ -386,44 +673,42 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(None)):
 async def broadcast_log(log: str):
     for connection in active_connections:
         try:
-            await connection.send_json({"LOG": log}) # Proper JSON format
+            await connection.send_json({"LOG": log})
         except Exception as e:
-            print(f"Error broadcasting log: {e}")
+            logger.error(f"Error broadcasting log to WebSocket: {e}")
 
+# Function to broadcast messages to all active WebSocket connections
 async def broadcast_message(message: str):
-    #print(f"Attempting to broadcast message: {message}")
     for connection in active_connections:
         try:
-            #print(f"Broadcasting message: {message}")
-            await connection.send_json({"message": message})  # Proper JSON format
+            await connection.send_json({"message": message})
+            logger.debug(f"Broadcasted message to WebSocket: {message}")
         except Exception as e:
-            print(f"Error sending message to WebSocket: {e}")
+            logger.error(f"Error sending message to WebSocket: {e}")
 
-# Add file upload API route using FastAPI
+# File Upload Endpoint
 @app.post("/upload")
 async def upload_file(file: UploadFile):
     try:
         content = await file.read()
         filename = file.filename
-        print(f"Received file: {filename}")
+        logger.info(f"Received file: {filename}")
 
         # Try to decode as UTF-8, fall back to handling as binary if it fails
         try:
             content_str = content.decode("utf-8")  # Decode the bytes to a string
-            print(f"File {filename} decoded as UTF-8")
+            logger.info(f"File {filename} decoded as UTF-8")
 
             # Check if the file is a code file and process it
             if filename.endswith(('.py', '.js', '.java', '.html', '.css', '.cpp', '.ts')):
-                # Process the file as a code file
-                print(f"Processing code file: {filename}")
-                # Insert into memory or handle code file-specific processing here
+                logger.info(f"Processing code file: {filename}")
                 client.insert_archival_memory(agent_state.id, content_str)
             else:
-                print(f"File {filename} is not a code file, handling as text.")
+                logger.info(f"File {filename} is not a code file, handling as text.")
                 client.insert_archival_memory(agent_state.id, content_str)
 
         except UnicodeDecodeError:
-            print(f"File {filename} could not be decoded as UTF-8, handling as binary.")
+            logger.warning(f"File {filename} could not be decoded as UTF-8, handling as binary.")
 
             # Handle binary files (PDFs)
             if filename.endswith(".pdf"):
@@ -438,21 +723,21 @@ async def upload_file(file: UploadFile):
 
                     # Insert extracted text into memory
                     client.insert_archival_memory(agent_state.id, extracted_text)
-                    print(f"Extracted text from {filename} and added to archival memory.")
+                    logger.info(f"Extracted text from {filename} and added to archival memory.")
                 except Exception as e:
-                    print(f"Error processing PDF {filename}: {e}")
+                    logger.error(f"Error processing PDF {filename}: {e}")
                     return {"message": f"Error processing PDF {filename}: {e}"}
             else:
-                print(f"Binary file {filename} is not a supported type.")
+                logger.warning(f"Binary file {filename} is not a supported type.")
                 return {"message": f"Binary file {filename} is not a supported type."}
 
     except Exception as e:
-        print(f"Error processing file {file.filename}: {e}")
+        logger.error(f"Error processing file {file.filename}: {e}")
         return {"message": f"Error processing file {file.filename}: {e}"}
 
     return {"message": f"Successfully processed {filename}"}
 
-# Function to fetch calendar events
+# Function to fetch Google Calendar events
 def fetch_google_calendar_events():
     TOKEN_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'backend', 'gcal_token.json')
     CREDENTIALS_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'backend', 'google_api_credentials.json')
@@ -483,169 +768,93 @@ def fetch_google_calendar_events():
         ).execute()
         
         events = events_result.get('items', [])
+        logger.info(f"Fetched {len(events)} calendar events.")
         return events
 
     except HttpError as error:
-        print(f"An error occurred: {error}")
+        logger.error(f"An error occurred while fetching calendar events: {error}")
         return []
 
-# Function to initialize the tasks.json file
+# Calendar Events Endpoint
+@app.get("/api/calendar-events")
+def get_calendar_events(token: str = Depends(get_token_from_cookie), db: Session = Depends(get_db)):
+    user = get_current_user(db, token)
+    events = fetch_google_calendar_events()
+    return events
+
+# Initialize the tasks.json file
 def initialize_tasks_file():
     # Check if tasks.json exists and is not empty
     if not exists('tasks.json'):
         # If the file doesn't exist, create it with an empty list
         with open('tasks.json', 'w') as f:
             json.dump([], f)  # Initialize with an empty list
-            print("Initialized tasks.json with an empty list.")
+            logger.info("Initialized tasks.json with an empty list.")
 
 # Load tasks from tasks.json or initialize an empty list if file doesn't exist
 if os.path.exists('tasks.json'):
     with open('tasks.json', 'r') as f:
-        tasks = json.load(f)
+        try:
+            tasks = json.load(f)
+            logger.info(f"Loaded {len(tasks)} tasks from tasks.json.")
+        except json.JSONDecodeError:
+            tasks = []
+            logger.warning("tasks.json is corrupted. Initialized with an empty list.")
 else:
+    initialize_tasks_file()
     tasks = []
 
-@app.get("/api/calendar-events")
-def get_calendar_events(token: str = Depends(verify_token)):
-    events = fetch_google_calendar_events()
-    return events
-
-# Endpoint to get tasks from tasks.json
+# Tasks Endpoints
 @app.get("/api/tasks")
-def get_tasks(token: str = Depends(verify_token)):
+def get_tasks(token: str = Depends(get_token_from_cookie), db: Session = Depends(get_db)):
+    user = get_current_user(db, token)
+    
     if not exists('./tasks.json'):
+        logger.info("tasks.json does not exist. Returning empty task list.")
         return {"tasks": []}  # Return empty list if file doesn't exist
 
     with open('./tasks.json', 'r') as f:
-        tasks = json.load(f)
+        try:
+            tasks = json.load(f)
+            logger.info(f"Tasks loaded from JSON: {tasks}")
+        except json.JSONDecodeError:
+            tasks = []
+            logger.warning("tasks.json is corrupted. Returning empty task list.")
     
-    print(f"Tasks loaded from JSON: {tasks}")
     return {"tasks": tasks}
 
 @app.post("/api/tasks/add")
-async def add_task(task: dict = Body(...)):
+async def add_task(task: dict = Body(...), token: str = Depends(get_token_from_cookie), db: Session = Depends(get_db)):
+    user = get_current_user(db, token)
     task_description = task.get("task")
+    
+    if not task_description:
+        logger.warning(f"Empty task received from user: {user.username}")
+        raise HTTPException(status_code=400, detail="Task description is required.")
     
     # Push task to agent memory and save it
     agent_state.memory.task_queue_push(task_description)
-    return {"tasks": agent_state.memory["tasks"].value}
+    logger.info(f"Task added by {user.username}: {task_description}")
     
+    return {"tasks": agent_state.memory.memory["tasks"].value}
+
+# Text-to-Speech Playback Endpoint
 @app.get("/api/play-tts", response_class=FileResponse)
-def play_tts(token: str = Depends(verify_token)):
+def play_tts(token: str = Depends(get_token_from_cookie), db: Session = Depends(get_db)):
+    user = get_current_user(db, token)
+    
     # Define the path to the latest generated TTS MP3 file
     file_path = "output.mp3"  # Replace with your actual path if necessary
 
     if os.path.exists(file_path):
-        # Return the audio file if it exists
+        logger.info(f"Playing TTS file: {file_path}")
         return FileResponse(file_path, media_type="audio/mpeg", filename="output.mp3")
     else:
-        # Return a 404 error if the file is not found
+        logger.warning(f"TTS file not found: {file_path}")
         raise HTTPException(status_code=404, detail="File not found")
-    
-spotify_token = None  # This will store the Spotify token
 
-@app.get("/auth/login")
-async def login(request: Request):
-    scopes = "user-read-private user-read-email streaming user-read-playback-state user-modify-playback-state"
-    
-    # Build the dynamic redirect_uri using the full request URL
-    base_url = str(request.url).split('/auth/login')[0]  # Removes the path part of the current URL
-    redirect_uri = f"{base_url}/auth/callback"
-    
-    auth_url = f"{SPOTIFY_AUTH_URL}?response_type=code&client_id={CLIENT_ID}&scope={scopes}&redirect_uri={redirect_uri}"
-    return RedirectResponse(url=auth_url)
-
-@app.get("/auth/callback")
-async def spotify_callback(request: Request, code: str = Query(...)):
-    token_url = "https://accounts.spotify.com/api/token"
-    global spotify_token  # Access the global token variable
-    
-    # Build the dynamic redirect_uri using the full request URL
-    base_url = str(request.url).split('/auth/callback')[0]  # Removes the path part of the current URL
-    redirect_uri = f"{base_url}/auth/callback"
-
-    body = {
-        "grant_type": "authorization_code",
-        "code": code,
-        "redirect_uri": redirect_uri,  # Use the dynamically generated redirect URI
-        "client_id": CLIENT_ID,
-        "client_secret": CLIENT_SECRET,
-    }
-    
-    headers = {
-        "Content-Type": "application/x-www-form-urlencoded"
-    }
-    response = requests.post(token_url, data=body, headers=headers)
-
-    if response.status_code == 200:
-        token_data = response.json()
-        access_token = token_data["access_token"]
-        refresh_token = token_data.get("refresh_token")  # Get refresh token
-
-        # Store the token globally or in a database for future use
-        spotify_token = access_token
-
-        # Save the refresh token in your environment for future use (e.g., in a file, or database)
-        if refresh_token:
-            with open(".env", "a") as f:
-                f.write(f"\nSPOTIFY_REFRESH_TOKEN={refresh_token}\n")  # Append it on a new line
-
-        # Get the base URL from the request (either localhost or external URL)
-        base_url = str(request.base_url)
-        # Construct the redirect URL dynamically
-        redirect_url = f"{base_url}frontend?access_token={access_token}"
-        
-        return RedirectResponse(redirect_url)
-    else:
-        return {"error": "Failed to obtain access token"}
-
-# Refresh Token Endpoint (optional)
-@app.get("/auth/refresh")
-async def refresh_token(refresh_token: str):
-    data = {
-        "grant_type": "refresh_token",
-        "refresh_token": refresh_token,
-        "client_id": CLIENT_ID,
-        "client_secret": CLIENT_SECRET,
-    }
-    token_response = requests.post(TOKEN_URL, data=data)
-    if token_response.status_code == 200:
-        token_data = token_response.json()
-        global spotify_token
-        spotify_token = token_data.get("access_token")
-        return token_data
-    else:
-        return {"error": "Failed to refresh token"}
-
-def refresh_spotify_token():
-    global spotify_token
-    refresh_token = os.getenv('SPOTIFY_REFRESH_TOKEN')  # Ensure you store the refresh token in your .env file
-
-    if not refresh_token:
-        print("No refresh token available. Cannot refresh the Spotify token.")
-        return
-
-    data = {
-        "grant_type": "refresh_token",
-        "refresh_token": refresh_token,
-        "client_id": CLIENT_ID,
-        "client_secret": CLIENT_SECRET,
-    }
-    
-    token_response = requests.post(TOKEN_URL, data=data)
-
-    if token_response.status_code == 200:
-        token_data = token_response.json()
-        spotify_token = token_data.get("access_token")  # Update global token
-        print("Spotify token successfully refreshed.")
-    else:
-        print(f"Failed to refresh Spotify token: {token_response.status_code}, {token_response.text}")
-
-
- # Include the router for authentication-related routes
-app.include_router(auth_router)
-
-def set_spotify_volume(spotify_token, device_id, volume_percent):
+# Spotify Helper Functions
+def set_spotify_volume(spotify_token: str, device_id: str, volume_percent: int):
     headers = {
         "Authorization": f"Bearer {spotify_token}",
         "Content-Type": "application/json"
@@ -661,12 +870,11 @@ def set_spotify_volume(spotify_token, device_id, volume_percent):
     volume_response = requests.put(volume_url, headers=headers, params=params)
 
     if volume_response.status_code == 204:
-        print(f"Volume set to {volume_percent}% on device {device_id}.")
+        logger.info(f"Volume set to {volume_percent}% on device {device_id}.")
     else:
-        print(f"Error setting volume: {volume_response.status_code}, {volume_response.text}")
+        logger.error(f"Error setting volume: {volume_response.status_code}, {volume_response.text}")
 
-
-def play_spotify_alarm(spotify_token, playlist_uri, track_uri=None, volume_percent=100):
+def play_spotify_alarm(spotify_token: str, playlist_uri: str, track_uri: Optional[str] = None, volume_percent: int = 100):
     headers = {
         "Authorization": f"Bearer {spotify_token}",
         "Content-Type": "application/json"
@@ -678,19 +886,19 @@ def play_spotify_alarm(spotify_token, playlist_uri, track_uri=None, volume_perce
     if devices_response.status_code == 200:
         devices = devices_response.json()["devices"]
         if not devices:
-            print("No active devices found.")
+            logger.warning("No active Spotify devices found.")
             return
         else:
             # Check for a device named "Jarvis"
             jarvis_device = next((device for device in devices if device['name'] == 'Jarvis'), None)
             if jarvis_device:
                 device_id = jarvis_device['id']
-                print(f"Using device: {jarvis_device['name']}")
+                logger.info(f"Using device: {jarvis_device['name']}")
             else:
-                print("Device named 'Jarvis' not found. Using the first available device.")
+                logger.info("Device named 'Jarvis' not found. Using the first available device.")
                 device_id = devices[0]['id']  # Default to the first device if "Jarvis" is not found
     else:
-        print(f"Error fetching devices: {devices_response.status_code}, {devices_response.text}")
+        logger.error(f"Error fetching Spotify devices: {devices_response.status_code}, {devices_response.text}")
         return
 
     # Set the volume before starting playback
@@ -710,44 +918,52 @@ def play_spotify_alarm(spotify_token, playlist_uri, track_uri=None, volume_perce
     play_response = requests.put(play_url, headers=headers, json=play_data, params={"device_id": device_id})
 
     if play_response.status_code == 204:
-        print(f"Started playing on device {jarvis_device['name'] if jarvis_device else devices[0]['name']}.")
+        device_name = jarvis_device['name'] if jarvis_device else devices[0]['name']
+        logger.info(f"Started playing on device {device_name}.")
     else:
-        print(f"Error starting playback: {play_response.status_code}, {play_response.text}")
+        logger.error(f"Error starting playback: {play_response.status_code}, {play_response.text}")
 
-# Define a wrapper function to call the async function
-def send_wakeup_message_wrapper():
-    asyncio.run(send_wakeup_message())  # Run the async function in a synchronous context
-
-    global spotify_token  # Use global spotify_token
-    
-    # Check if the token is available and valid
-    if not spotify_token:
-        print("Spotify token is missing. Attempting to refresh it...")
-        refresh_spotify_token()  # Attempt to refresh the token
-    
-    if not spotify_token:
-        print("Failed to refresh Spotify token. Cannot play the alarm.")
-        return  # Exit if the token is still invalid
-
-    playlist_uri = "spotify:playlist:42OcQjCTlc8MCDx9f45Div"  # Replace with your playlist URI
-    track_uri = "spotify:track:0NFGcFKiEX5Ct5xQ60PbVR"
-    play_spotify_alarm(spotify_token, playlist_uri, track_uri, volume_percent=100)  # Play the last added song
-
-# Define your message sending function
+# Wakeup Message Functions
 async def send_wakeup_message():
     current_time = datetime.now().strftime("%H:%M:%S")
     message = f"Good morning! The time is {current_time}. Let's start the day!"
     await broadcast_message(message=message)  # Send the message over WebSocket
     say(message)  # Use the TTS function to speak the message
-# Start the scheduler
-scheduler.start()
+    logger.info("Woke up user with message.")
+
+def send_wakeup_message_wrapper():
+    asyncio.run(send_wakeup_message())  # Run the async function in a synchronous context
 
 # Schedule the wakeup message at 7:00 AM
+scheduler.start()
 scheduler.add_job(send_wakeup_message_wrapper, 'cron', hour=7, minute=0)
+logger.info("Scheduler started and wakeup message scheduled at 7:00 AM daily.")
 
+# WebSocket Broadcast Function
+async def broadcast_message(message: str):
+    for connection in active_connections:
+        try:
+            await connection.send_json({"message": message})
+            logger.debug(f"Broadcasted message to WebSocket: {message}")
+        except Exception as e:
+            logger.error(f"Error sending message to WebSocket: {e}")
+
+@app.get("/frontend")
+def serve_frontend():
+    index_file_path = "../frontend/build/index.html"
+    if os.path.exists(index_file_path):
+        return FileResponse(index_file_path)
+    else:
+        return {"error": "index.html not found"}
+
+@app.get("/")
+def serve_frontend_root():
+    index_file_path = "../frontend/build/index.html"
+    if os.path.exists(index_file_path):
+        return FileResponse(index_file_path)
+    else:
+        return {"error": "index.html not found"}
+
+# Run the application
 if __name__ == '__main__':
-    #try:
     uvicorn.run("main:app", host="0.0.0.0", port=8000)
-    # finally:
-    #     client.delete_agent(agent_id=agent_state.id)
-    #     print(f"Deleted agent: {agent_state.name}")

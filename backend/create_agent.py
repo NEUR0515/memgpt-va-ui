@@ -9,7 +9,6 @@ from functions.schedule_event import schedule_event
 from functions.list_upcoming_events import list_upcoming_events
 from functions.git_repo import create_git_repo
 from functions.file_functions import read_file, write_file
-from functions.threat_newsletter import fetch_security_news, send_security_newsletter
 from functions.website_crawler import analyse_website
 from functions.query_smart_home import query_home_assistant
 from functions.control_smart_home import control_home_assistant_device
@@ -61,8 +60,6 @@ search_tool = client.create_tool(google_search, name="google_search")
 schedule_event_tool = client.create_tool(schedule_event, name="schedule_event")
 list_upcoming_events_tool = client.create_tool(list_upcoming_events, name="list_upcoming_events")
 create_repo_tool = client.create_tool(create_git_repo, name="create_git_repo")
-security_news_tool = client.create_tool(fetch_security_news, name="fetch_security_news")
-send_security_newsletter_tool = client.create_tool(send_security_newsletter, name="send_security_newsletter")
 analyse_website_tool = client.create_tool(analyse_website, name="analyse_website")
 query_home_assistant_tool = client.create_tool(query_home_assistant, name="query_home_assistant")
 control_home_assistant_tool = client.create_tool(control_home_assistant_device, name="control_home_assistant_device")
@@ -79,8 +76,7 @@ agent_state = client.create_agent(
     name="Jarvis", memory=agent_memory,
     tools=[sms_tool.name, search_tool.name, schedule_event_tool.name, list_upcoming_events_tool.name, 
            create_repo_tool.name, read_file_tool.name, write_file_tool.name, 
-           security_news_tool.name, send_security_newsletter_tool.name, analyse_website_tool.name,
-           query_home_assistant_tool.name, control_home_assistant_tool.name]
+           analyse_website_tool.name, query_home_assistant_tool.name, control_home_assistant_tool.name]
 )
 
 print(f"Created agent: {agent_state.name} with ID {str(agent_state.id)}")

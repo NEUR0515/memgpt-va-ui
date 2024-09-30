@@ -8,24 +8,20 @@ const CalendarSection: React.FC = () => {
   useEffect(() => {
     async function fetchEvents() {
       try {
-        const token = localStorage.getItem('token'); // Get the token from localStorage
-        if (!token) {
-          console.error('No token found in localStorage');
-          setLoading(false);
-          return;
-        }
+        // Remove token retrieval from localStorage
+        // const token = localStorage.getItem('token');
 
+        // Remove the Authorization header and include credentials
         const response = await fetch('/api/calendar-events', {
-          headers: {
-            'Authorization': `Bearer ${token}`,  // Pass the token in the headers
-          },
+          method: 'GET',
+          credentials: 'include', // Include cookies in the request
         });
 
         if (response.ok) {
           const data = await response.json();
           setEvents(data);
         } else if (response.status === 401 || response.status === 403) {
-          console.error('Unauthorized or Forbidden. Please check your token.');
+          console.error('Unauthorized or Forbidden. Please check your authentication.');
         } else {
           console.error('Error fetching calendar events:', response.status);
         }

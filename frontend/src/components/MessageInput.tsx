@@ -1,24 +1,35 @@
+// MessageInput.tsx
 import React, { useState } from 'react';
-import { IconButton, CircularProgress, CircularProgressLabel, Textarea, Box, Flex, Button, useColorModeValue, useBreakpointValue } from '@chakra-ui/react';
+import {
+  IconButton,
+  CircularProgress,
+  CircularProgressLabel,
+  Textarea,
+  Box,
+  Flex,
+  Button,
+  useColorModeValue,
+  useBreakpointValue,
+} from '@chakra-ui/react';
 import { ArrowUpIcon, AttachmentIcon, CalendarIcon } from '@chakra-ui/icons';
 import { FiMic } from 'react-icons/fi';
-import { FaSpotify } from 'react-icons/fa'; // Import Spotify Icon
+import { FaSpotify } from 'react-icons/fa';
 
 interface MessageInputProps {
   onSendMessage: (message: string) => void;
+  onClearMessages: () => void; // Add this line
   audioLevel: number;
   isListening: boolean;
-  setMessages: React.Dispatch<React.SetStateAction<any[]>>;
   toggleListening: () => void;
   toggleLeftPanel: () => void;
   toggleRightPanel: () => void;
-  isSpotifyVisible: boolean;  // Pass the Spotify visibility state
-  setIsSpotifyVisible: React.Dispatch<React.SetStateAction<boolean>>; // Pass the state updater for Spotify
+  isSpotifyVisible: boolean;
+  setIsSpotifyVisible: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const MessageInput: React.FC<MessageInputProps> = ({
-  setMessages,
   onSendMessage,
+  onClearMessages, // Add this line
   audioLevel,
   isListening,
   toggleListening,
@@ -29,16 +40,19 @@ const MessageInput: React.FC<MessageInputProps> = ({
 }) => {
   const [editorContent, setEditorContent] = useState('');
 
-  const handleClearMessages = (setMessages: React.Dispatch<React.SetStateAction<any[]>>) => {
-    setMessages([]);  // Clear messages from UI
-    localStorage.removeItem("chatMessages");  // Clear messages from localStorage
+  const handleClearMessages = () => {
+    if (window.confirm('Are you sure you want to clear all messages?')) {
+      onClearMessages(); // Call the prop function
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      onSendMessage(editorContent);
-      setEditorContent('');
+      if (editorContent.trim() !== '') {
+        onSendMessage(editorContent.trim());
+        setEditorContent('');
+      }
     }
   };
 
@@ -77,10 +91,10 @@ const MessageInput: React.FC<MessageInputProps> = ({
             onClick={toggleLeftPanel}
           />
         )}
-        
+
         {showOtherButtons && (
           <Flex justify="center" p={4}>
-            <Button colorScheme="red" onClick={() => handleClearMessages(setMessages)}>
+            <Button colorScheme="red" onClick={handleClearMessages}>
               Clear Messages
             </Button>
           </Flex>
@@ -111,8 +125,10 @@ const MessageInput: React.FC<MessageInputProps> = ({
           h="50px"
           mb={{ base: 4, md: 0 }}
           onClick={() => {
-            onSendMessage(editorContent);
-            setEditorContent('');
+            if (editorContent.trim() !== '') {
+              onSendMessage(editorContent.trim());
+              setEditorContent('');
+            }
           }}
         />
 
@@ -121,11 +137,11 @@ const MessageInput: React.FC<MessageInputProps> = ({
             <CircularProgressLabel>
               <IconButton
                 aria-label="Microphone"
-                size={{ base: "40px", md: "60px" }}
+                size={{ base: '40px', md: '60px' }}
                 isRound
                 icon={<FiMic />}
-                w={{ base: "40px", md: "50px" }}
-                h={{ base: "40px", md: "50px" }}
+                w={{ base: '40px', md: '50px' }}
+                h={{ base: '40px', md: '50px' }}
                 onClick={toggleListening}
                 color={isListening ? 'red.500' : 'gray.600'}
                 bg={isListening ? 'gray.100' : 'gray.200'}
