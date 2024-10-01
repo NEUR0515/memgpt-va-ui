@@ -1,4 +1,3 @@
-// Jarvis.tsx
 import React, { useState, useRef, useEffect, useReducer, useCallback, useContext } from 'react';
 import { Flex, Box, useDisclosure, useColorModeValue, useToast } from '@chakra-ui/react';
 import Header from './Header';
@@ -26,22 +25,34 @@ declare global {
   }
 }
 
-// Reducer function for managing messages
+// Reducer function for managing messages and saving to localStorage
 function messagesReducer(state: Message[], action: { type: string; message?: Message }): Message[] {
+  let newState: Message[];  // Explicitly defining the type of newState as Message[]
+
   switch (action.type) {
     case 'add':
-      return [...state, action.message!];
+      newState = [...state, action.message!];  // Assuming action.message is always defined when type is 'add'
+      break;
     case 'clear':
-      return [];
+      newState = [];
+      break;
     default:
       return state;
   }
+
+  // Save the updated messages to localStorage
+  localStorage.setItem('chatMessages', JSON.stringify(newState));
+  return newState;
 }
 
 function Jarvis() {
   const { isOpen: isLeftPanelOpen, onToggle: toggleLeftPanel } = useDisclosure();
   const { isOpen: isRightPanelOpen, onToggle: toggleRightPanel } = useDisclosure();
-  const [messages, dispatchMessages] = useReducer(messagesReducer, []);
+  const [messages, dispatchMessages] = useReducer(messagesReducer, [], () => {
+    // Load messages from localStorage on initial render
+    const savedMessages = localStorage.getItem('chatMessages');
+    return savedMessages ? JSON.parse(savedMessages) : [];
+  });
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [lastPlayedMessage, setLastPlayedMessage] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
