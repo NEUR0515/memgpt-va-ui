@@ -13,6 +13,10 @@ import sanitizeHtml from 'sanitize-html';
 import WebPlayback from './WebPlayback';
 import axios from 'axios';
 import { AuthContext } from './AuthContext';
+
+// Set Axios to send credentials with every request
+axios.defaults.withCredentials = true;
+
 // Define the types for SpeechRecognition
 declare global {
   interface Window {
@@ -56,6 +60,7 @@ function Jarvis() {
   const bgColor = useColorModeValue('gray.100', 'gray.800');
   const textColor = useColorModeValue('gray.800', 'white');
   const { isAuthenticated, setIsAuthenticated } = useContext(AuthContext);
+  const [isSpotifyLoggedIn, setIsSpotifyLoggedIn] = useState<boolean>(false); // State for Spotify login
 
   // Utility function to extract error messages
   const getErrorMessage = (error: unknown): string => {
@@ -380,12 +385,17 @@ function Jarvis() {
     localStorage.removeItem('chatMessages');
   };
 
-  // Function to fetch Spotify token from backend
+  // Function to fetch Spotify token from backend and check login status
   const fetchSpotifyToken = async (): Promise<string> => {
     try {
       const response = await axios.get('/api/spotify-token', {
-        withCredentials: true, // Ensure cookies are sent with the request
+        withCredentials: true,
       });
+      if (response.data.spotify_token) {
+        setIsSpotifyLoggedIn(true); // User is logged in if token is valid
+      } else {
+        setIsSpotifyLoggedIn(false); // No valid token means the user is not logged in
+      }
       return response.data.spotify_token;
     } catch (error) {
       const message = getErrorMessage(error);
@@ -397,11 +407,15 @@ function Jarvis() {
         duration: 5000,
         isClosable: true,
       });
-      // Redirect to Spotify login if token fetch fails
-      // window.location.href = '/auth/login';
+      setIsSpotifyLoggedIn(false); // If error, set to not logged in
       return '';
     }
   };
+
+  // Check if user is logged into Spotify on mount
+  useEffect(() => {
+    fetchSpotifyToken();
+  }, []);
 
   return (
     <Flex direction="column" height="100vh">
@@ -441,9 +455,12 @@ function Jarvis() {
         setIsSpotifyVisible={setIsSpotifyVisible}
       />
       {/* Spotify Component */}
-      {/* {isSpotifyVisible ? (
+      {isSpotifyVisible && (
         <WebPlayback fetchSpotifyToken={fetchSpotifyToken} />
-      ) : (
+      )}
+
+      {/* Conditionally render Spotify Login button */}
+      {!isSpotifyLoggedIn && (
         <div
           style={{
             position: 'fixed',
@@ -455,11 +472,11 @@ function Jarvis() {
             borderRadius: '8px',
           }}
         >
-          {/* <button className="btn-spotify" onClick={handleSpotifyLogin}>
+          <button className="btn-spotify" onClick={handleSpotifyLogin}>
             Login with Spotify
           </button>
         </div>
-      )} */}
+      )}
     </Flex>
   );
 }

@@ -4,13 +4,6 @@ import { FaPlay, FaPause, FaStepBackward, FaStepForward, FaRandom, FaTv } from '
 import axios from 'axios';
 import { useToast } from '@chakra-ui/react';
 
-// Declare Spotify in the global window object
-declare global {
-  interface Window {
-    Spotify: any;
-  }
-}
-
 interface WebPlaybackProps {
   fetchSpotifyToken: () => Promise<string>;
 }
@@ -24,19 +17,6 @@ interface SpotifyDevice {
   volume_percent: number;
 }
 
-interface SpotifyPlayer {
-  addListener: (event: string, callback: Function) => void;
-  connect: () => Promise<boolean>;
-  disconnect: () => void;
-}
-
-interface SpotifyPlayerState {
-  track_window: {
-    current_track: SpotifyTrack;
-  };
-  paused: boolean;
-}
-
 interface SpotifyTrack {
   name: string;
   artists: Array<{ name: string }>;
@@ -46,10 +26,8 @@ interface SpotifyTrack {
 }
 
 const WebPlayback: React.FC<WebPlaybackProps> = ({ fetchSpotifyToken }) => {
-  const [player, setPlayer] = useState<any>(null);
   const [isPaused, setIsPaused] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
-  const [currentTrack, setCurrentTrack] = useState<any>(null);
+  const [currentTrack, setCurrentTrack] = useState<SpotifyTrack | null>(null);
   const [devices, setDevices] = useState<SpotifyDevice[]>([]);
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null);
   const [isDevicePickerOpen, setIsDevicePickerOpen] = useState(false);
@@ -76,7 +54,13 @@ const WebPlayback: React.FC<WebPlaybackProps> = ({ fetchSpotifyToken }) => {
       await fetchDevices(); // Fetch devices when opening the picker
     }
   };
-
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchCurrentPlayback();
+    }, 5000); // Fetch playback state every 5 seconds
+  
+    return () => clearInterval(interval);
+  }, []);
   // Close device picker when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -91,131 +75,34 @@ const WebPlayback: React.FC<WebPlaybackProps> = ({ fetchSpotifyToken }) => {
     };
   }, []);
 
-  // Initialize Spotify Player
-  useEffect(() => {
-    const initializePlayer = async () => {
-      try {
-        const token = await fetchSpotifyToken();
-        if (!token) {
-          console.error('Spotify token is not available.');
-          return;
-        }
-
-        const script = document.createElement('script');
-        script.src = 'https://sdk.scdn.co/spotify-player.js';
-        script.async = true;
-        document.body.appendChild(script);
-
-        script.onload = () => {
-          if (!window.Spotify) {
-            console.error('Spotify SDK failed to load.');
-            toast({
-              title: 'Spotify SDK Error',
-              description: 'Failed to load Spotify SDK.',
-              status: 'error',
-              duration: 5000,
-              isClosable: true,
-            });
-            return;
-          }
-
-          const player = new window.Spotify.Player({
-            name: 'Jarvis',
-            getOAuthToken: async (cb: any) => {
-              const newToken = await fetchSpotifyToken();
-              cb(newToken);
-            },
-            volume: 0.5,
-          });
-
-          setPlayer(player);
-
-          player.addListener('ready', ({ device_id }: { device_id: string }) => {
-            console.log('Ready with Device ID', device_id);
-            setSelectedDevice(device_id);
-            transferPlayback(device_id, false); // Do not auto-play
-          });
-
-          player.addListener('not_ready', ({ device_id }: { device_id: string }) => {
-            console.log('Device ID has gone offline', device_id);
-          });
-
-          player.addListener('player_state_changed', (state: any) => {
-            if (!state) return;
-            setCurrentTrack(state.track_window.current_track);
-            setIsPaused(state.paused);
-          });
-
-          player.addListener('initialization_error', ({ message }: { message: string }) => {
-            const errorMessage = getErrorMessage(message);
-            console.error('Initialization Error:', errorMessage);
-            toast({
-              title: 'Initialization Error',
-              description: errorMessage,
-              status: 'error',
-              duration: 5000,
-              isClosable: true,
-            });
-          });
-
-          player.addListener('authentication_error', ({ message }: { message: string }) => {
-            const errorMessage = getErrorMessage(message);
-            console.error('Authentication Error:', errorMessage);
-            toast({
-              title: 'Authentication Error',
-              description: errorMessage,
-              status: 'error',
-              duration: 5000,
-              isClosable: true,
-            });
-          });
-
-          player.addListener('account_error', ({ message }: { message: string }) => {
-            const errorMessage = getErrorMessage(message);
-            console.error('Account Error:', errorMessage);
-            toast({
-              title: 'Account Error',
-              description: errorMessage,
-              status: 'error',
-              duration: 5000,
-              isClosable: true,
-            });
-          });
-
-          player.addListener('playback_error', ({ message }: { message: string }) => {
-            const errorMessage = getErrorMessage(message);
-            console.error('Playback Error:', errorMessage);
-            toast({
-              title: 'Playback Error',
-              description: errorMessage,
-              status: 'error',
-              duration: 5000,
-              isClosable: true,
-            });
-          });
-
-          player.connect();
-        };
-      } catch (error) {
-        const message = getErrorMessage(error);
-        console.error('Error initializing Spotify Player:', message);
+  // Check if Spotify account is Premium
+  const checkPremium = async () => {
+    try {
+      const token = await fetchSpotifyToken();
+      const response = await axios.get('https://api.spotify.com/v1/me', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const isPremium = response.data.product === 'premium';
+      if (!isPremium) {
         toast({
-          title: 'Spotify Player Error',
-          description: 'An error occurred while initializing the Spotify Player.',
-          status: 'error',
-          duration: 5000,
+          title: 'Premium Required',
+          description: 'Spotify Premium is required to use playback features.',
+          status: 'warning',
+          duration: 7000,
           isClosable: true,
         });
+        // Optionally, disable playback controls
       }
-    };
+    } catch (error) {
+      console.error('Error checking Spotify account type:', error);
+    }
+  };
 
-    initializePlayer();
-
-    return () => {
-      if (player) {
-        player.disconnect();
-      }
-    };
+  // Initialize component
+  useEffect(() => {
+    checkPremium(); // Ensure user has Premium before enabling playback controls
+    fetchCurrentPlayback(); // Fetch current playback state on mount
+    fetchDevices(); // Fetch available devices on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -239,7 +126,7 @@ const WebPlayback: React.FC<WebPlaybackProps> = ({ fetchSpotifyToken }) => {
         if (data.devices.length === 0) {
           toast({
             title: 'No Active Devices',
-            description: 'Please open Spotify on a device to use the Web Playback SDK.',
+            description: 'Please open Spotify on a device to use playback controls.',
             status: 'warning',
             duration: 5000,
             isClosable: true,
@@ -282,21 +169,28 @@ const WebPlayback: React.FC<WebPlaybackProps> = ({ fetchSpotifyToken }) => {
 
   // Transfer playback to selected device
   const transferPlayback = async (deviceId: string, shouldPlay: boolean = true) => {
-    setIsLoading(true);
     try {
       const token = await fetchSpotifyToken();
       if (!token) {
         throw new Error('Spotify token is not available.');
       }
       await axios.put(
-        'https://api.spotify.com/v1/me/player/play',
+        'https://api.spotify.com/v1/me/player',
         { device_ids: [deviceId], play: shouldPlay },
         {
           headers: { Authorization: `Bearer ${token}` },
+          withCredentials: false, // Ensure credentials are not sent
         }
       );
       setSelectedDevice(deviceId);
       fetchCurrentPlayback();
+      toast({
+        title: 'Playback Transferred',
+        description: `Playback has been transferred to ${deviceId}.`,
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
     } catch (error) {
       const message = getErrorMessage(error);
       console.error('Error transferring playback:', message);
@@ -312,8 +206,6 @@ const WebPlayback: React.FC<WebPlaybackProps> = ({ fetchSpotifyToken }) => {
         // Token is invalid or expired, redirect to login
         window.location.href = '/auth/login';
       }
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -366,30 +258,64 @@ const WebPlayback: React.FC<WebPlaybackProps> = ({ fetchSpotifyToken }) => {
     }
   };
 
-  // Handle playback controls
+  // Handle playback controls using Spotify Web API
   const handlePlaybackControl = async (action: 'play' | 'pause' | 'next' | 'previous') => {
     try {
       const token = await fetchSpotifyToken();
       if (!token) {
         throw new Error('Spotify token is not available.');
       }
+
+      // Fetch the list of devices to get the active device
+      const devicesResponse = await fetch('https://api.spotify.com/v1/me/player/devices', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!devicesResponse.ok) {
+        throw new Error('Failed to fetch devices.');
+      }
+
+      const devicesData = await devicesResponse.json();
+      const activeDevice = devicesData.devices.find((device: SpotifyDevice) => device.is_active);
+
+      if (!activeDevice) {
+        throw new Error('No active device found.');
+      }
+
       const endpointMap = {
         play: 'https://api.spotify.com/v1/me/player/play',
         pause: 'https://api.spotify.com/v1/me/player/pause',
         next: 'https://api.spotify.com/v1/me/player/next',
         previous: 'https://api.spotify.com/v1/me/player/previous',
       };
-      const method = action === 'play' || action === 'pause' ? 'put' : 'post';
+
+      const methodMap = {
+        play: 'PUT',
+        pause: 'PUT',
+        next: 'POST',
+        previous: 'POST',
+      };
 
       await axios({
-        method: method,
+        method: methodMap[action],
         url: endpointMap[action],
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        data: action === 'play' ? { device_ids: [activeDevice.id], play: true } : {},
+        withCredentials: false,
       });
 
       fetchCurrentPlayback();
+      toast({
+        title: 'Success',
+        description: `Playback ${action}ed successfully.`,
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
     } catch (error) {
       const message = getErrorMessage(error);
       console.error(`Error performing ${action} action:`, message);
@@ -483,19 +409,19 @@ const WebPlayback: React.FC<WebPlaybackProps> = ({ fetchSpotifyToken }) => {
             zIndex: 1000,
           }}
         >
-          {devices.map((device: SpotifyDevice) => (
-            <div
-              key={device.id}
-              style={{
-                padding: '5px',
-                cursor: 'pointer',
-                color: device.id === selectedDevice ? 'green' : 'white',
-              }}
-              onClick={() => transferPlayback(device.id)}
-            >
-              {device.name} {device.is_active && '(Active)'}
-            </div>
-          ))}
+        {devices.map((device: SpotifyDevice) => (
+          <div
+            key={device.id}
+            style={{
+              padding: '5px',
+              cursor: 'pointer',
+              color: device.id === selectedDevice ? 'green' : 'white',
+            }}
+            onClick={() => transferPlayback(device.id)}
+          >
+            {device.name} ({device.type}) {device.is_active && '(Active)'}
+          </div>
+        ))}
         </div>
       )}
     </div>

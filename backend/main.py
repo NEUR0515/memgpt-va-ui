@@ -2,6 +2,7 @@ import json
 import logging
 from os.path import join, dirname, exists
 import requests
+import secrets
 from fastapi import (
     FastAPI,
     UploadFile,
@@ -82,7 +83,7 @@ scheduler = BackgroundScheduler()
 # Add CORS Middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://127.0.0.1:8000", "http://172.16.3.80:8000"],  # Update this with your frontend's URL in production
+    allow_origins=["*"],  # Update this with your frontend's URL in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -219,11 +220,11 @@ def authenticate_user(username: str, password: str, db: Session):
         return False
     return user
 
-def get_token_from_cookie(access_token: str = Cookie(None)):
-    if not access_token:
-        logger.warning("Access token cookie not found.")
+def get_token_from_cookie(app_access_token: str = Cookie(None)):
+    if not app_access_token:
+        logger.warning("App access token cookie not found.")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
-    return access_token
+    return app_access_token
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
@@ -325,7 +326,7 @@ def refresh_spotify_token(user: User, db: Session):
         expires_in = token_data.get("expires_in")  # Typically in seconds
         
         # Calculate the new expiration time
-        expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
+        expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
         
         # Update user's Spotify tokens in the database
         user.spotify_access_token = new_access_token
@@ -372,36 +373,61 @@ def login_for_access_token(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
         )
+    
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
-    expire = datetime.now(timezone.utc) + access_token_expires  # Make expire timezone-aware
+    
+    # Generate refresh token
+    refresh_token_expires = timedelta(days=30)
+    refresh_token = create_refresh_token(
+        data={"sub": user.username}, expires_delta=refresh_token_expires
+    )
+    
+    # Store refresh token and token expiration in the database
+    user.app_refresh_token = refresh_token
+    user.token_expires = datetime.now(timezone.utc) + access_token_expires
+    db.commit()
+    
+    # Set cookies for access token and refresh token
     response = JSONResponse(content={"access_token": access_token, "token_type": "bearer"})
     response.set_cookie(
-        key="access_token",
+        key="app_access_token",
         value=access_token,
         httponly=True,
-        samesite="Lax",  # Changed from "None" to "Lax" for development
-        expires=int(expire.timestamp()),  # Ensure it's an integer
-        secure=False  # Set to True if using HTTPS in production
+        samesite="Lax",
+        expires=int((datetime.now(timezone.utc) + access_token_expires).timestamp()),
+        secure=False  # Set to True in production
     )
-    # Optionally, set the refresh token cookie here if applicable
+    response.set_cookie(
+        key="app_refresh_token",
+        value=refresh_token,
+        httponly=True,
+        samesite="Lax",
+        expires=int((datetime.now(timezone.utc) + refresh_token_expires).timestamp()),
+        secure=False  # Set to True in production
+    )
     return response
 
 @app.post("/refresh-token")
 def refresh_access_token(
     db: Session = Depends(get_db),
-    refresh_token: str = Cookie(None)  # Assuming refresh_token is stored in a separate cookie
+    refresh_token: str = Cookie(None)  # Assuming app's refresh token is stored in a separate cookie
 ):
     if not refresh_token:
-        logger.warning("Refresh token cookie not found.")
+        logger.warning("App refresh token cookie not found.")
         raise HTTPException(status_code=401, detail="Refresh token missing.")
     
-    payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
-    username: str = payload.get("sub")
-    if username is None:
-        logger.error("Refresh token payload missing 'sub'")
+    # Decode and validate the app's refresh token
+    try:
+        payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            logger.error("Refresh token payload missing 'sub'")
+            raise HTTPException(status_code=403, detail="Invalid refresh token")
+    except JWTError as e:
+        logger.error(f"JWTError during token decoding: {e}")
         raise HTTPException(status_code=403, detail="Invalid refresh token")
     
     user = db.query(User).filter(User.username == username).first()
@@ -410,8 +436,8 @@ def refresh_access_token(
         raise HTTPException(status_code=404, detail="User not found")
     
     # Check if the refresh token matches
-    if user.spotify_refresh_token != refresh_token:
-        logger.warning(f"Refresh token mismatch for user: {username}")
+    if user.app_refresh_token != refresh_token:
+        logger.warning(f"App refresh token mismatch for user: {username}")
         raise HTTPException(status_code=403, detail="Invalid refresh token")
     
     # Create new access token
@@ -420,36 +446,38 @@ def refresh_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
     
-    # Optionally, create a new refresh token (token rotation)
+    # Create a new refresh token (token rotation)
     new_refresh_token = create_refresh_token(
         data={"sub": user.username}, expires_delta=timedelta(days=30)
     )
     
-    # Update refresh token in the database
-    user.spotify_refresh_token = new_refresh_token
-    user.spotify_token_expires = datetime.now(timezone.utc) + timedelta(days=30)
+    # Update refresh token and token expiration in the database
+    user.app_access_token = access_token
+    user.app_refresh_token = new_refresh_token
+    user.token_expires = datetime.now(timezone.utc) + access_token_expires
     db.commit()
-    logger.info(f"Access token refreshed for user: {username}")
+    logger.info(f"App access token refreshed for user: {username}")
     
     expire_access = datetime.now(timezone.utc) + access_token_expires
     expire_refresh = datetime.now(timezone.utc) + timedelta(days=30)
     
+    # Set new cookies
     response = JSONResponse(content={"access_token": access_token, "token_type": "bearer"})
     response.set_cookie(
-        key="access_token",
+        key="app_access_token",
         value=access_token,
         httponly=True,
         samesite="Lax",
         expires=int(expire_access.timestamp()),
-        secure=False  # Set to True if using HTTPS
+        secure=False  # Set to True in production
     )
     response.set_cookie(
-        key="refresh_token",
+        key="app_refresh_token",
         value=new_refresh_token,
         httponly=True,
         samesite="Lax",
         expires=int(expire_refresh.timestamp()),
-        secure=False
+        secure=False  # Set to True in production
     )
     return response
 
@@ -515,8 +543,25 @@ def update_user_profile(
 async def spotify_login(request: Request):
     scopes = "user-read-private user-read-email streaming user-read-playback-state user-modify-playback-state"
     
+    # Generate a unique state parameter for CSRF protection
+    state = secrets.token_urlsafe(16)
+    
+    # Determine if the app is running in production
+    is_production = os.getenv("ENV") == "production"
+    
+    # Store the state in a secure, HttpOnly cookie
+    response = RedirectResponse(url="")
+    response.set_cookie(
+        key="spotify_auth_state",
+        value=state,
+        httponly=True,
+        samesite="lax",
+        secure=is_production,  # True in production, False otherwise
+        max_age=300  # State is valid for 5 minutes
+    )
+    
     # Build the dynamic redirect_uri using the full request URL
-    base_url = str(request.url).split('/auth/login')[0]  # Removes the path part of the current URL
+    base_url = f"{request.url.scheme}://{request.url.netloc}"
     redirect_uri = f"{base_url}/auth/callback"
     
     params = {
@@ -524,19 +569,37 @@ async def spotify_login(request: Request):
         "client_id": CLIENT_ID,
         "scope": scopes,
         "redirect_uri": redirect_uri,
-        "state": "optional_state_parameter",  # Optional: Used to prevent CSRF
+        "state": state,
         "show_dialog": "true"  # Optional: Forces the user to re-login and re-authorize
     }
     
     auth_url = f"{SPOTIFY_AUTH_URL}?{urllib.parse.urlencode(params)}"
     logger.info("Redirecting user to Spotify authentication.")
-    return RedirectResponse(url=auth_url)
+    response.headers["Location"] = auth_url
+    response.status_code = 307  # Temporary Redirect
+    return response
 
 @app.get("/auth/callback")
-async def spotify_callback(request: Request, code: str = Query(...), state: Optional[str] = Query(None), db: Session = Depends(get_db)):
-    redirect_uri = str(request.url).split('/auth/callback')[0] + '/auth/callback'
+async def spotify_callback(
+    request: Request, 
+    code: str = Query(...), 
+    state: Optional[str] = Query(None), 
+    db: Session = Depends(get_db)
+):
+    # Retrieve the state from the cookie
+    stored_state = request.cookies.get("spotify_auth_state")
+    if not stored_state or state != stored_state:
+        logger.error("State mismatch or missing.")
+        raise HTTPException(status_code=400, detail="State mismatch or missing.")
     
-    # Exchange authorization code for access and refresh tokens
+    # Determine if the app is running in production
+    is_production = os.getenv("ENV") == "production"
+    
+    # Set redirect_uri to match /auth/login
+    base_url = f"{request.url.scheme}://{request.url.netloc}"
+    redirect_uri = f"{base_url}/auth/callback"
+    
+    # Exchange authorization code for tokens
     payload = {
         "grant_type": "authorization_code",
         "code": code,
@@ -561,16 +624,16 @@ async def spotify_callback(request: Request, code: str = Query(...), state: Opti
     expires_in = token_data.get("expires_in")  # in seconds
     
     # Calculate token expiration time
-    expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
+    expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
     
-    # Extract access token from cookie
-    access_token_cookie = request.cookies.get("access_token")
-    if not access_token_cookie:
-        logger.error("Access token cookie missing during Spotify callback.")
-        raise HTTPException(status_code=401, detail="Unauthorized: Access token missing.")
+    # Retrieve the user associated with the app's access token from the app's cookie
+    app_access_token = request.cookies.get("app_access_token")
+    if not app_access_token:
+        logger.error("App access token cookie missing during Spotify callback.")
+        raise HTTPException(status_code=401, detail="Unauthorized: App access token missing.")
     
-    # Retrieve the user associated with the access token
-    user = get_current_user(db, access_token_cookie)
+    # Retrieve the user from the app's access token
+    user = get_current_user(db, app_access_token)
     if not user:
         logger.error("User not found during Spotify callback.")
         raise HTTPException(status_code=404, detail="User not found")
@@ -582,28 +645,43 @@ async def spotify_callback(request: Request, code: str = Query(...), state: Opti
     user.spotify_token_expires = expires_at  # Assign datetime object directly
     db.commit()
     logger.info(f"Spotify tokens updated for user: {user.username}")
-    base_url = str(request.url).split('/auth/callback')[0]
-    # Redirect to frontend with success message or user dashboard
-    frontend_url = os.getenv("FRONTEND_URL", base_url)  # Replace with your frontend URL
-    return RedirectResponse(url=frontend_url)
+    
+    # Clear the state cookie as it's no longer needed
+    response_redirect = RedirectResponse(url=os.getenv("FRONTEND_URL", "/"))
+    response_redirect.delete_cookie(key="spotify_auth_state")
+    
+    # Set the spotify_refresh_token in a separate cookie
+    if refresh_token:
+        response_redirect.set_cookie(
+            key="spotify_refresh_token",
+            value=refresh_token,
+            httponly=True,
+            samesite="lax",
+            secure=is_production,  # True in production, False otherwise
+            expires=int((datetime.now(timezone.utc) + timedelta(days=30)).timestamp()),
+        )
+    
+    return response_redirect
 
 @app.post("/logout")
 async def logout(response: Response):
-    response.delete_cookie(key="access_token")
-    response.delete_cookie(key="refresh_token")
+    response.delete_cookie(key="app_access_token")
+    response.delete_cookie(key="app_refresh_token")
+    response.delete_cookie(key="spotify_refresh_token")
+    logger.info("User logged out successfully.")
     return {"message": "Logged out successfully"}
 
 # WebSocket Endpoints
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)):
     await websocket.accept()
-    access_token = get_cookie(websocket.scope, "access_token")
-    if not access_token:
+    app_access_token = get_cookie(websocket.scope, "app_access_token")
+    if not app_access_token:
         logger.warning("WebSocket connection attempted without token.")
         await websocket.close(code=1008)  # Policy Violation
         return
     try:
-        user = get_current_user(db, access_token)
+        user = get_current_user(db, app_access_token)
         username = user.username
         logger.info(f"WebSocket connection accepted for user: {username}")
     except HTTPException as e:
