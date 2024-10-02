@@ -77,11 +77,16 @@ def say(message, filename="output.mp3", index=None):
             pygame.mixer.music.stop()
         pygame.mixer.quit()  # Fully quit pygame mixer
 
+        # Set the filename to save in the ./backend directory
+        backend_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "backend")
+        os.makedirs(backend_dir, exist_ok=True)  # Ensure the directory exists
+        full_filename = os.path.join(backend_dir, filename)
+
         # Retry mechanism to ensure the file is not in use before removing it
         retry_count = 0
-        while os.path.exists(filename):
+        while os.path.exists(full_filename):
             try:
-                os.remove(filename)  # Try removing the file
+                os.remove(full_filename)  # Try removing the file
                 break  # Exit loop if successful
             except PermissionError:
                 retry_count += 1
@@ -90,10 +95,10 @@ def say(message, filename="output.mp3", index=None):
                 time.sleep(1)  # Wait for 1 second before retrying
 
         # Save the new audio file
-        save(audio, filename)
+        save(audio, full_filename)
 
         # Play the audio file after saving
-        #play_audio(filename)
+        #play_audio(full_filename)
 
     except Exception as e:
         print(f"Error in say() function: {e}")

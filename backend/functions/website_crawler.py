@@ -24,7 +24,7 @@ def analyse_website(self: Agent, url: str) -> str:
         response = app.crawl_url(
             url,
             params={
-                'limit': 10,  # Number of pages to crawl
+                'limit': 50,  # Number of pages to crawl
                 'scrapeOptions': {'formats': ['markdown']}  # Format to return
             },
             poll_interval=30

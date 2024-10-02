@@ -65,7 +65,7 @@ load_dotenv(dotenv_path)
 
 # Configure Logging
 logging.basicConfig(
-    level=logging.DEBUG,  # Change to INFO or WARNING in production
+    level=logging.WARNING,  # Change to INFO or WARNING in production
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler("app.log"),
