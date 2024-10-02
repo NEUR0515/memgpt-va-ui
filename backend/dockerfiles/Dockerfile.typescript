@@ -1,0 +1,11 @@
+# typescript-sandbox Dockerfile
+FROM node:18
+
+# Install TypeScript
+RUN npm install -g typescript ts-node
+
+# Create a directory for code
+WORKDIR /sandbox
+
+# Add entrypoint
+ENTRYPOINT ["ts-node"]

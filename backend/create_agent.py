@@ -2,16 +2,7 @@ from os.path import join, dirname
 from typing import Optional, List
 from memgpt import create_client
 from memgpt.memory import ChatMemory, MemoryModule
-from memgpt.agent import Agent
-from functions.send_sms import send_text_message
-from functions.gsearch import google_search
-from functions.schedule_event import schedule_event
-from functions.list_upcoming_events import list_upcoming_events
-from functions.git_repo import create_git_repo
-from functions.file_functions import read_file, write_file
-from functions.website_crawler import analyse_website
-from functions.query_smart_home import query_home_assistant
-from functions.control_smart_home import control_home_assistant_device
+from tools import all_tools
 from dotenv import load_dotenv
 
 dotenv_path = join(dirname(__file__), '.env')
@@ -53,17 +44,6 @@ class TaskMemory(ChatMemory):
         self.memory["tasks"].value = self.memory["tasks"].value[1:]
         return task
 
-write_file_tool = client.create_tool(write_file, name="write_file")
-read_file_tool = client.create_tool(read_file, name="read_file")
-sms_tool = client.create_tool(send_text_message, name="send_text_message")
-search_tool = client.create_tool(google_search, name="google_search")
-schedule_event_tool = client.create_tool(schedule_event, name="schedule_event")
-list_upcoming_events_tool = client.create_tool(list_upcoming_events, name="list_upcoming_events")
-create_repo_tool = client.create_tool(create_git_repo, name="create_git_repo")
-analyse_website_tool = client.create_tool(analyse_website, name="analyse_website")
-query_home_assistant_tool = client.create_tool(query_home_assistant, name="query_home_assistant")
-control_home_assistant_tool = client.create_tool(control_home_assistant_device, name="control_home_assistant_device")
-
 with open('persona.txt', 'r') as file:
     persona = file.read()
 
@@ -74,9 +54,7 @@ with open('human.txt', 'r') as file:
 agent_memory = TaskMemory(human=human, persona=persona, tasks=[])
 agent_state = client.create_agent(
     name="Jarvis", memory=agent_memory,
-    tools=[sms_tool.name, search_tool.name, schedule_event_tool.name, list_upcoming_events_tool.name, 
-           create_repo_tool.name, read_file_tool.name, write_file_tool.name, 
-           analyse_website_tool.name, query_home_assistant_tool.name, control_home_assistant_tool.name]
+    tools=[tool.name for tool in all_tools]
 )
 
 print(f"Created agent: {agent_state.name} with ID {str(agent_state.id)}")

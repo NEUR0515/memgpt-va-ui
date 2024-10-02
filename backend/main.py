@@ -711,31 +711,30 @@ async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)
                 logger.debug(f"Processing command from {username}: {command}")
 
                 if command:
-                    if "exit" in command.lower() or "stop" in command.lower():
-                        await websocket.close()
-                        logger.info(f"WebSocket closed on 'exit' or 'stop' command by {username}.")
-                        break
-                    else:
-                        response = client.user_message(agent_id=agent_state.id, message=command)
+                    # if "exit" in command.lower() or "stop" in command.lower():
+                    #     await websocket.close()
+                    #     logger.info(f"WebSocket closed on 'exit' or 'stop' command by {username}.")
+                    #     break
+                    response = client.user_message(agent_id=agent_state.id, message=command)
 
-                        thought_message = response.messages[0].get("internal_monologue")
-                        if thought_message:
-                            await websocket.send_json({
-                                "type": "thought",
-                                "message": thought_message
-                            })
-                            logger.debug(f"Sent thought message to {username}: {thought_message}")
+                    thought_message = response.messages[0].get("internal_monologue")
+                    if thought_message:
+                        await websocket.send_json({
+                            "type": "thought",
+                            "message": thought_message
+                        })
+                        logger.debug(f"Sent thought message to {username}: {thought_message}")
 
-                        assistant_message = None
-                        if response.messages:
-                            for r in response.messages:
-                                if "assistant_message" in r:
-                                    assistant_message = r.get("assistant_message")
+                    assistant_message = None
+                    if response.messages:
+                        for r in response.messages:
+                            if "assistant_message" in r:
+                                assistant_message = r.get("assistant_message")
 
-                        if assistant_message:
-                            await broadcast_message(assistant_message)
-                            say(assistant_message)
-                            logger.debug(f"Broadcasted assistant message: {assistant_message}")
+                    if assistant_message:
+                        await broadcast_message(assistant_message)
+                        say(assistant_message)
+                        logger.debug(f"Broadcasted assistant message: {assistant_message}")
 
             except Exception as e:
                 logger.error(f"Error processing message from {username}: {e}")
