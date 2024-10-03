@@ -133,3 +133,27 @@ button.clear-messages:hover {
   font-size: 12px;
   cursor: pointer;
 }
+
+.function-call-messages {
+  background-color: #f9f9f9;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  margin-top: 15px;
+}
+
+.function-call-messages h3 {
+  font-size: 1.2em;
+  margin-bottom: 10px;
+}
+
+.function-call-messages ul {
+  list-style: none;
+  padding: 0;
+}
+
+.function-call-messages li {
+  font-family: monospace;
+  color: #333;
+  margin-bottom: 5px;
+}

@@ -185,37 +185,52 @@ function Jarvis() {
     }
   }, [isTtsEnabled]);
 
-  const handleIncomingMessage = useCallback(
-    (data: any) => {
-      if (data.type === 'thought') {
-        const thoughtMessage: Message = {
-          role: 'ai',
-          content: data.message,
-          timestamp: new Date().toLocaleTimeString(),
-          name: 'Thought',
-          type: 'thought',
-        };
-        dispatchMessages({ type: 'add', message: thoughtMessage });
-        scrollToBottom();
-      } else {
-        const aiMessage: Message = {
-          role: 'ai',
-          content: data.message,
-          timestamp: new Date().toLocaleTimeString(),
-          name: 'Jarvis',
-        };
-        dispatchMessages({ type: 'add', message: aiMessage });
-        scrollToBottom();
-
-        // Simplified check, only play TTS if it's a new message
-        if (isTtsEnabled && data.message !== lastPlayedMessage) {
-          playTTSResponse();
-          setLastPlayedMessage(data.message);
-        }
+// Function to handle incoming messages including thought, AI messages, and function calls
+const handleIncomingMessage = useCallback(
+  (data: any) => {
+    if (data.type === 'thought') {
+      const thoughtMessage: Message = {
+        role: 'ai',
+        content: data.message,
+        timestamp: new Date().toLocaleTimeString(),
+        name: 'Thought',
+        type: 'thought',
+      };
+      dispatchMessages({ type: 'add', message: thoughtMessage });
+      scrollToBottom();
+    } else if (data.type === 'function_call') {
+      // Check if it's not a send_message function call
+      if (data.message.includes('Function: send_message')) {
+        return; // Do nothing, ignore the send_message function calls
       }
-    },
-    [isTtsEnabled, lastPlayedMessage, playTTSResponse]
-  );
+
+      const functionCallMessage: Message = {
+        role: 'ai',
+        content: data.message,
+        timestamp: new Date().toLocaleTimeString(),
+        name: 'Function Call',
+        type: 'function_call', // Use a new type for function calls
+      };
+      dispatchMessages({ type: 'add', message: functionCallMessage });
+      scrollToBottom();
+    } else {
+      const aiMessage: Message = {
+        role: 'ai',
+        content: data.message,
+        timestamp: new Date().toLocaleTimeString(),
+        name: 'Jarvis',
+      };
+      dispatchMessages({ type: 'add', message: aiMessage });
+      scrollToBottom();
+
+      if (isTtsEnabled && data.message !== lastPlayedMessage) {
+        playTTSResponse();
+        setLastPlayedMessage(data.message);
+      }
+    }
+  },
+  [isTtsEnabled, lastPlayedMessage, playTTSResponse]
+);
 
   const handleSendMessage = useCallback(
     (message: string) => {

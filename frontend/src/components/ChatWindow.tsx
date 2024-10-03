@@ -81,13 +81,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ messages, messagesEndRef, usern
         {messages.map((message, index) => (
           <HStack
             key={index}
-            className={`chat-message ${message.role} ${message.type === 'thought' ? 'thought-message' : ''}`}
+            className={`chat-message ${message.role} ${message.type === 'thought' ? 'thought-message' : ''} ${message.type === 'function_call' ? 'function-call-message' : ''}`}
             alignSelf={message.role === 'user' ? 'flex-end' : 'flex-start'}
             maxWidth="fit-content"
           >
-            {/* Avatar or Thought Icon */}
+            {/* Avatar or Thought/Function Icon */}
             {message.type === 'thought' ? (
               <Box as="span" fontSize="2xl" className="thought-icon">💭</Box>  // Display the thought bubble icon
+            ) : message.type === 'function_call' ? (
+              <Box as="span" fontSize="2xl" className="function-icon">⚙️</Box>  // Display function call icon
             ) : (
               <Avatar
                 name={message.name}
@@ -99,9 +101,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ messages, messagesEndRef, usern
             {/* Message content */}
             <VStack align="flex-start" spacing={1} maxWidth="fit-content">
               <HStack spacing={3}>
-                {/* "Thoughts" label instead of the name for thought messages */}
+                {/* Label for thoughts or function calls */}
                 <Text fontWeight="bold" color={textColor}>
-                  {message.type === 'thought' ? 'Thoughts' : message.role === 'user' ? firstName : message.name} {/* Show "Thoughts" */}
+                  {message.type === 'thought' ? 'Thoughts' : message.type === 'function_call' ? 'Function Call' : message.role === 'user' ? firstName : message.name} {/* Show "Thoughts" or "Function Call" */}
                 </Text>
                 <Text fontSize="xs" color="gray.400">{message.timestamp}</Text>
               </HStack>
@@ -113,8 +115,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ messages, messagesEndRef, usern
                 </HStack>
               )}
 
+              {/* Function call message content */}
+              {message.type === 'function_call' && (
+                <HStack spacing={1}>
+                  <Text fontStyle="italic" color="gray.300">{message.content}</Text>
+                </HStack>
+              )}
+
               {/* Regular message with Markdown support */}
-              {message.type !== 'thought' && (
+              {message.type !== 'thought' && message.type !== 'function_call' && (
                 <Box className={`message-bubble ${message.role}`} p={3} borderRadius="lg">
                   <ReactMarkdown components={components}>{message.content}</ReactMarkdown> {/* Show as Markdown */}
                 </Box>

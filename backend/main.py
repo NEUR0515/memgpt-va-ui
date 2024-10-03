@@ -46,7 +46,7 @@ import base64
 import urllib.parse
 from starlette.websockets import WebSocket
 from starlette.types import Scope
-
+import ast
 # Function to extract cookies manually (if needed)
 def get_cookie(scope: Scope, key: str):
     cookies = {}
@@ -65,7 +65,7 @@ load_dotenv(dotenv_path)
 
 # Configure Logging
 logging.basicConfig(
-    level=logging.WARNING,  # Change to INFO or WARNING in production
+    level=logging.DEBUG,  # Change to INFO or WARNING in production
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler("app.log"),
@@ -672,6 +672,8 @@ async def logout(response: Response):
     return {"message": "Logged out successfully"}
 
 # WebSocket Endpoints
+import ast
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)):
     await websocket.accept()
@@ -711,30 +713,61 @@ async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)
                 logger.debug(f"Processing command from {username}: {command}")
 
                 if command:
-                    # if "exit" in command.lower() or "stop" in command.lower():
-                    #     await websocket.close()
-                    #     logger.info(f"WebSocket closed on 'exit' or 'stop' command by {username}.")
-                    #     break
                     response = client.user_message(agent_id=agent_state.id, message=command)
 
-                    thought_message = response.messages[0].get("internal_monologue")
-                    if thought_message:
-                        await websocket.send_json({
-                            "type": "thought",
-                            "message": thought_message
-                        })
-                        logger.debug(f"Sent thought message to {username}: {thought_message}")
+                    # Loop through all the messages in the response
+                    for r in response.messages:
+                        # Handle thought messages
+                        if "internal_monologue" in r:
+                            thought_message = {
+                                "type": "thought",
+                                "message": r["internal_monologue"]
+                            }
+                            await websocket.send_json(thought_message)
+                            logger.debug(f"Sent thought message to {username}: {thought_message}")
 
-                    assistant_message = None
-                    if response.messages:
-                        for r in response.messages:
-                            if "assistant_message" in r:
-                                assistant_message = r.get("assistant_message")
+                        # Handle function calls
+                        if "function_call" in r:
+                            function_call_string = r["function_call"]
+                            logger.debug(f"Raw function call string: {function_call_string}")
 
-                    if assistant_message:
-                        await broadcast_message(assistant_message)
-                        say(assistant_message)
-                        logger.debug(f"Broadcasted assistant message: {assistant_message}")
+                            # Try to parse the function call string
+                            try:
+                                if isinstance(function_call_string, str) and '(' in function_call_string:
+                                    # Extract function name and arguments
+                                    function_name, function_args_str = function_call_string.split("(", 1)
+                                    function_name = function_name.strip()
+                                    function_args = ast.literal_eval(function_args_str[:-1])  # Remove the trailing ')'
+                                    
+                                    function_call_message = {
+                                        "type": "function_call",
+                                        "message": f"Function: {function_name} called with arguments: {function_args}"
+                                    }
+
+                                    await websocket.send_json(function_call_message)
+                                    logger.debug(f"Sent function call to {username}: {function_call_message}")
+                                else:
+                                    logger.error(f"Function call string is in an unexpected format: {function_call_string}")
+                                    await websocket.send_json({
+                                        "type": "function_call",
+                                        "message": f"Unexpected format for function call: {function_call_string}"
+                                    })
+
+                            except Exception as e:
+                                logger.error(f"Error parsing function call: {e}")
+                                await websocket.send_json({
+                                    "type": "function_call",
+                                    "message": f"Error parsing function call: {e}"
+                                })
+
+                        # Handle assistant messages
+                        if "assistant_message" in r:
+                            assistant_message = {
+                                "type": "message",
+                                "message": r["assistant_message"]
+                            }
+                            await websocket.send_json(assistant_message)
+                            logger.debug(f"Sent assistant message to {username}: {assistant_message}")
 
             except Exception as e:
                 logger.error(f"Error processing message from {username}: {e}")
