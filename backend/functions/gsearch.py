@@ -46,7 +46,7 @@ def google_search(self: Agent, query: str) -> List[Tuple[str, str]]:
         credentials = MemGPTCredentials().load()
         assert credentials.openai_key is not None, credentials.openai_key
         # model = "gpt-4-1106-preview"
-        model = "gpt-3.5-turbo-1106"
+        model = "gpt-4o"
 
         client = OpenAI(api_key=credentials.openai_key)
         chat_completion = client.chat.completions.create(

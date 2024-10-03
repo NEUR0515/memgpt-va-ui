@@ -10,8 +10,9 @@ from functions.file_functions import read_file, write_file
 from functions.website_crawler import analyse_website
 from functions.query_smart_home import query_home_assistant
 from functions.control_smart_home import control_home_assistant_device
-from functions.docker_functions import stop_docker_container, get_container_logs
-from functions.coding_functions import read_and_identify_code, start_code_execution_container, install_dependencies_wrapper, execute_code_in_container, capture_logs, handle_code_execution
+from functions.docker_functions import start_docker_container, stop_docker_container
+from functions.coding_functions import read_and_identify_code, gather_project_files, start_code_execution_container, execute_code_in_container, capture_container_logs, handle_code_execution, install_dependencies, create_tar_with_file
+from functions.generate_image import create_image
 # Initialize the client
 client = create_client()
 
@@ -26,21 +27,24 @@ create_repo_tool = client.create_tool(create_git_repo, name="create_git_repo")
 analyse_website_tool = client.create_tool(analyse_website, name="analyse_website")
 query_home_assistant_tool = client.create_tool(query_home_assistant, name="query_home_assistant")
 control_home_assistant_tool = client.create_tool(control_home_assistant_device, name="control_home_assistant_device")
+start_docker_container_tool = client.create_tool(start_docker_container, name="start_docker_container")
 stop_docker_container_tool = client.create_tool(stop_docker_container, name="stop_docker_container")
-get_container_logs_tool = client.create_tool(get_container_logs, name="get_container_logs")
 read_and_identify_code_tool = client.create_tool(read_and_identify_code, name="read_and_identify_code")
+gather_project_files_tool = client.create_tool(gather_project_files, name="gather_project_files")
 start_code_execution_container_tool = client.create_tool(start_code_execution_container, name="start_code_execution_container")
-install_dependencies_tool = client.create_tool(install_dependencies_wrapper, name="install_dependencies_wrapper")
+install_dependencies_tool = client.create_tool(install_dependencies, name="install_dependencies")
 execute_code_in_container_tool = client.create_tool(execute_code_in_container, name="execute_code_in_container")
-capture_logs_tool = client.create_tool(capture_logs, name="capture_logs")
+capture_container_logs_tool = client.create_tool(capture_container_logs, name="capture_container_logs")
 handle_code_execution_tool  = client.create_tool(handle_code_execution, name="handle_code_execution")
+create_tar_with_file_tool = client.create_tool(create_tar_with_file, name="create_tar_with_file")
+create_image_tool = client.create_tool(create_image, name="create_image")
 
 # Export the tools
 all_tools = [
-    write_file_tool, read_file_tool, sms_tool, search_tool,
-    schedule_event_tool, list_upcoming_events_tool,
-    create_repo_tool, analyse_website_tool, query_home_assistant_tool,
     control_home_assistant_tool, read_and_identify_code_tool, start_code_execution_container_tool,
-    stop_docker_container_tool, get_container_logs_tool,
-    install_dependencies_tool, execute_code_in_container_tool, capture_logs_tool, handle_code_execution_tool
+    create_repo_tool, analyse_website_tool, query_home_assistant_tool,
+    install_dependencies_tool, execute_code_in_container_tool, capture_container_logs_tool, handle_code_execution_tool,
+    schedule_event_tool, list_upcoming_events_tool, gather_project_files_tool,
+    start_docker_container_tool, stop_docker_container_tool, create_tar_with_file_tool,
+    write_file_tool, read_file_tool, sms_tool, search_tool, create_image_tool
 ]
